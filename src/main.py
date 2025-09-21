@@ -1,12 +1,12 @@
 import os
-import pandas as pd
+# import pandas as pd
 from apiclient.discovery import build
 from dotenv import load_dotenv
 
 # .envファイルを読み込む
 load_dotenv() 
 
-VIDEO_ID = os.environ.get("VIDEO_ID")
+CHANNEL_ID = os.environ.get("CHANNEL_ID")
 API_KEY = os.environ.get("API_KEY")
 
 youtube = build('youtube',
@@ -14,18 +14,17 @@ youtube = build('youtube',
                 developerKey=API_KEY
                 )
 
-videos_response = youtube.videos().list(
-    part='snippet,statistics',
-    id='{},'.format(VIDEO_ID)
+channels_response = youtube.channels().list(
+    part='statistics, contentDetails, brandingSettings',
+    id=CHANNEL_ID
 ).execute()
 
-# snippet
-snippetInfo = videos_response["items"][0]["snippet"]
+# レスポンスから情報を抽出
+channel_info = channels_response["items"][0]
+statistics_info = channel_info["statistics"]
+content_info = channel_info['contentDetails']
+branding_info = channel_info['brandingSettings']
 
-# 動画タイトル
-title = snippetInfo['title']
-
-# チャンネル名
-channeltitle = snippetInfo['channelTitle']
-print(channeltitle)
-print(title)
+print(statistics_info)
+print(content_info)
+print(branding_info)

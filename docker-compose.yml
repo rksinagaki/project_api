@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    environment:
+      - API_KEY=${API_KEY}
+      - CHANNEL_ID=${CHANNEL_ID}
+    tty: true
+    stdin_open: true
