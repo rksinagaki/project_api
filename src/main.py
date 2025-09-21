@@ -3,7 +3,6 @@ import pandas as pd
 from apiclient.discovery import build
 from dotenv import load_dotenv
 
-
 # .envファイルを読み込む
 load_dotenv() 
 
