@@ -62,6 +62,7 @@ def get_uploads_playlist_id(channel_id):
     ).execute()
     return channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
 
+# ここの処理
 def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
     comments_data = []
     
@@ -88,27 +89,24 @@ def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
 
 if __name__ == '__main__':
     # 上位50件の動画情報を取得
-    top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=10) #本来は50
-    print("\n--- 視聴回数が多い上位50件の動画 ---")
+    top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=5) #本来は50
     print(top_videos_df[['title', 'view_count']].to_string(index=False))
 
     all_comments = []
-    print("\nコメントの取得を開始します...")
-    for index, row in top_videos_df.iterrows():
+    for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
         video_id = row['video_id']
         video_title = row['title']
-        print(f"動画 '{video_title}' (ID: {video_id}) のコメントを取得中...")
-        comments = get_comments_for_video(video_id, max_comments_per_video=100)
-        all_comments.extend(comments)
-        print(f"  -> {len(comments)} 件のコメントを取得しました。")
-        
+        comments = get_comments_for_video(video_id, max_comments_per_video=100) # [{}, {}, {}, {}]という構造になっている
+        all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
+
     # 取得したコメントをDataFrameに変換してCSVに保存
-    if all_comments:
-        df_comments = pd.DataFrame(all_comments)
-        output_dir = 'data'
-        os.makedirs(output_dir, exist_ok=True)
-        df_comments.to_csv(os.path.join(output_dir, 'top_videos_comments.csv'), index=False, encoding='utf-8-sig')
-        print(f"\n--- 取得完了 ---")
-        print(f"合計 {len(all_comments)} 件のコメントを '{output_dir}/top_videos_comments.csv' に保存しました。")
-    else:
-        print("\n取得できたコメントはありませんでした。")
+    # if all_comments:
+    #     df_comments = pd.DataFrame(all_comments)
+    #     output_dir = '../data'
+    #     os.makedirs(output_dir, exist_ok=True)
+    #     df_comments.to_csv(os.path.join(output_dir, 'top_videos_comments.csv'), index=False, encoding='utf-8')
+    #     print(f"合計 {len(all_comments)} 件のコメントを '{output_dir}/top_videos_comments.csv' に保存しました。")
+    # else:
+    #     print("\n取得できたコメントはありませんでした。")
+
+    
