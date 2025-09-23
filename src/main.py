@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from apiclient.discovery import build
+from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
 load_dotenv() 
@@ -22,10 +22,26 @@ channels_response = youtube.channels().list(
 # チャンネル情報の取得
 # /////////////////
 def get_channel():
-    channel_info = channels_response["items"][0]
-    channel_statistics = channel_info["statistics"]
-    channel_content = channel_info['contentDetails']
-    channel_branding = channel_info['brandingSettings']
+    channels_response = youtube.channels().list(
+            part='snippet,statistics',
+            id=CHANNEL_ID
+        ).execute()
+
+    channel_data = channels_response['items'][0]
+    
+    # 必要なデータを辞書形式で抽出
+    channel_info = {
+        'channel_id': channel_data['id'],
+        'channel_name': channel_data['snippet']['title'],
+        'subscriber_count': int(channel_data['statistics'].get('subscriberCount', 0)),
+        'total_views': int(channel_data['statistics'].get('viewCount', 0)),
+        'video_count': int(channel_data['statistics'].get('videoCount', 0)),
+        'published_at': channel_data['snippet']['publishedAt']
+    }
+
+    channel_list = [channel_info]
+
+    return channel_list
 
 # /////////////////
 # 動画情報の取得
@@ -53,16 +69,17 @@ def get_video():
                 id=','.join(video_ids)
             ).execute()
 
+            # 各動画の詳細情報を抽出
             for video_data in videos_response['items']:
-                # 各動画の詳細情報を抽出
                 video_id = video_data['id']
                 title = video_data['snippet']['title']
                 published_at = video_data['snippet']['publishedAt']
-                view_count = video_data['statistics'].get('viewCount', 0) # 再生回数
-                like_count = video_data['statistics'].get('likeCount', 0) # いいね数
-                comment_count = video_data['statistics'].get('commentCount', 0) # コメント数
-                # 動画の長さはISO 8601形式で取得されるので、適宜変換が必要
+                view_count = video_data['statistics'].get('viewCount', 0)
+                like_count = video_data['statistics'].get('likeCount', 0)
+                comment_count = video_data['statistics'].get('commentCount', 0)
+                # 動画の長さ
                 duration = video_data['contentDetails']['duration']
+                tags = video_data['snippet'].get('tags', [])
 
                 all_videos_data.append({
                     'video_id': video_id,
@@ -71,7 +88,8 @@ def get_video():
                     'view_count': int(view_count),
                     'like_count': int(like_count),
                     'comment_count': int(comment_count),
-                    'duration': duration
+                    'duration': duration,
+                    'tags': tags
                 })
 
         next_page_token = playlist_response.get('nextPageToken')
@@ -79,17 +97,59 @@ def get_video():
         if not next_page_token:
             break
 
-    # 取得した動画情報を表示（例として最初の5件）
-    for i, video in enumerate(all_videos_data[:5]):
-        print(f"\n--- 動画 {i+1} ---")
-        print(f"動画ID: {video['video_id']}")
-        print(f"タイトル: {video['title']}")
-        print(f"公開日: {video['published_at']}")
-        print(f"再生数: {video['view_count']}")
-        print(f"いいね数: {video['like_count']}")
-        print(f"コメント数: {video['comment_count']}")
-        print(f"動画の長さ (ISO 8601): {video['duration']}")
+    return all_videos_data
+
+# /////////////////
+# アップロードした動画のIDを取得
+# /////////////////
+def get_uploads_playlist_id(channel_id):
+    channels_response = youtube.channels().list(
+        part='contentDetails',
+        id=channel_id
+    ).execute()
+    return channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
 
 # /////////////////
 # コメント情報の取得
 # /////////////////
+def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
+    comments_data = []
+    
+    comment_threads_response = youtube.commentThreads().list(
+        part='snippet',
+        videoId=video_id,
+        maxResults=min(100, max_comments_per_video),#本来は100
+        pageToken=None,
+        order='relevance'
+    ).execute()
+
+    for item in comment_threads_response['items']:
+        comment = item['snippet']['topLevelComment']['snippet']
+        comments_data.append({
+            'video_id': video_id,
+            'comment_id': item['id'],
+            'author_display_name': comment['authorDisplayName'],
+            'published_at': comment['publishedAt'],
+            'text_display': comment['textDisplay'],
+            'like_count': comment['likeCount']
+        })
+    
+    return comments_data
+
+# /////////////////
+# 実行
+# /////////////////
+# df_channel = pd.DataFrame(get_channel())
+# df_channel.to_csv('data/channel.csv', index=False, encoding='utf-8')
+# print("チャンネル情報をchannel.csvに保存しました。")
+
+# df_videos = pd.DataFrame(get_video())
+# df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
+# print("動画情報をyoutube_videos.csvに保存しました。")
+
+all_videos = get_video()
+num_videos = 10 # 本来は50
+sorted_videos = sorted(all_videos, key=lambda x: x['view_count'], reverse=True)
+# 上位 num_videos 件を抽出
+top_videos = sorted_videos[:num_videos]
+print(top_videos)
