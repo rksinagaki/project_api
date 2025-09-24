@@ -13,11 +13,6 @@ youtube = build('youtube',
                 developerKey=API_KEY
                 )
 
-channels_response = youtube.channels().list(
-        part='statistics, contentDetails, brandingSettings',
-        id=CHANNEL_ID
-    ).execute()
-
 # /////////////////
 # チャンネル情報の取得
 # /////////////////
@@ -47,6 +42,11 @@ def get_channel():
 # 動画情報の取得
 # /////////////////
 def get_video():
+    channels_response = youtube.channels().list(
+            part='statistics, contentDetails, brandingSettings',
+            id=CHANNEL_ID
+        ).execute()
+
     playlist_id = channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
     all_videos_data = []
     next_page_token = None
@@ -112,6 +112,14 @@ def get_uploads_playlist_id(channel_id):
 # /////////////////
 # コメント情報の取得
 # /////////////////
+def get_uploads_playlist_id(channel_id):
+    channels_response = youtube.channels().list(
+        part='contentDetails',
+        id=channel_id
+    ).execute()
+    return channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+
+# ここの処理
 def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
     comments_data = []
     
@@ -139,17 +147,42 @@ def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
 # /////////////////
 # 実行
 # /////////////////
-# df_channel = pd.DataFrame(get_channel())
-# df_channel.to_csv('data/channel.csv', index=False, encoding='utf-8')
-# print("チャンネル情報をchannel.csvに保存しました。")
+if __name__ == '__main__':
+    # df_channel = pd.DataFrame(get_channel())
+    # df_channel.to_csv('data/channel.csv', index=False, encoding='utf-8')
+    # print("チャンネル情報をchannel.csvに保存しました。")
 
-# df_videos = pd.DataFrame(get_video())
-# df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
-# print("動画情報をyoutube_videos.csvに保存しました。")
+    # df_videos = pd.DataFrame(get_video())
+    # df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
+    # print("動画情報をyoutube_videos.csvに保存しました。")
 
-all_videos = get_video()
-num_videos = 10 # 本来は50
-sorted_videos = sorted(all_videos, key=lambda x: x['view_count'], reverse=True)
-# 上位 num_videos 件を抽出
-top_videos = sorted_videos[:num_videos]
-print(top_videos)
+    # # 上位50件の動画情報を取得
+    # top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=5) #本来は50
+
+    # all_comments = []
+    # for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
+    #     video_id = row['video_id']
+    #     video_title = row['title']
+    #     comments = get_comments_for_video(video_id, max_comments_per_video=100) # [{}, {}, {}, {}]という構造になっている
+    #     all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
+
+    # # 取得したコメントをDataFrameに変換してCSVに保存
+    # df_comments = pd.DataFrame(all_comments)
+    # df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
+    # print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
+
+    channels_response = youtube.channels().list(
+            part='statistics, contentDetails, brandingSettings',
+            id=CHANNEL_ID
+        ).execute()
+
+    playlist_id = channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+
+
+
+    # all_videos = get_video()
+    # num_videos = 10 # 本来は50
+    # sorted_videos = sorted(all_videos, key=lambda x: x['view_count'], reverse=True)
+    # # 上位 num_videos 件を抽出
+    # top_videos = sorted_videos[:num_videos]
+    # print(top_videos)

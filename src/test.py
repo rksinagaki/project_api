@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv() 
 
-API_KEY = os.environ.get('API_KEY') # 'YOUR_API_KEY' を実際のAPIキーに置き換えてください
-CHANNEL_ID = os.environ.get('CHANNEL_ID') # 'YOUR_CHANNEL_ID' を実際のチャンネルIDに置き換えてください
+API_KEY = os.environ.get('API_KEY')
+CHANNEL_ID = os.environ.get('CHANNEL_ID')
 
 youtube = build('youtube', 'v3', developerKey=API_KEY)
 
@@ -90,7 +90,6 @@ def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
 if __name__ == '__main__':
     # 上位50件の動画情報を取得
     top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=5) #本来は50
-    print(top_videos_df[['title', 'view_count']].to_string(index=False))
 
     all_comments = []
     for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
@@ -100,13 +99,8 @@ if __name__ == '__main__':
         all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
 
     # 取得したコメントをDataFrameに変換してCSVに保存
-    # if all_comments:
-    #     df_comments = pd.DataFrame(all_comments)
-    #     output_dir = '../data'
-    #     os.makedirs(output_dir, exist_ok=True)
-    #     df_comments.to_csv(os.path.join(output_dir, 'top_videos_comments.csv'), index=False, encoding='utf-8')
-    #     print(f"合計 {len(all_comments)} 件のコメントを '{output_dir}/top_videos_comments.csv' に保存しました。")
-    # else:
-    #     print("\n取得できたコメントはありませんでした。")
+    df_comments = pd.DataFrame(all_comments)
+    df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
+    print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
 
     
