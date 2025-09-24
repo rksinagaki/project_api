@@ -151,16 +151,16 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 # 実行
 # /////////////////
 if __name__ == '__main__':
-    # df_channel = pd.DataFrame(get_channel())
-    # df_channel.to_csv('data/channel.csv', index=False, encoding='utf-8')
-    # print("チャンネル情報をchannel.csvに保存しました。")
+    df_channel = pd.DataFrame(get_channel())
+    df_channel.to_csv('../data/channel.csv', index=False, encoding='utf-8')
+    print("チャンネル情報をchannel.csvに保存しました。")
 
     df_videos = pd.DataFrame(get_video())
-    # df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
-    # print("動画情報をyoutube_videos.csvに保存しました。")
+    df_videos.to_csv('../data/videos.csv', index=False, encoding='utf-8')
+    print("動画情報をyoutube_videos.csvに保存しました。")
 
-    # # 上位50件の動画情報を取得
-    top_videos_df = df_videos.sort_values(by='view_count', ascending=False).head(10) #本来は50
+    # 上位100件の動画情報を取得
+    top_videos_df = df_videos.sort_values(by='view_count', ascending=False).head(10) #本来は100
 
     all_comments = []
     for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
@@ -171,5 +171,5 @@ if __name__ == '__main__':
 
     # 取得したコメントをDataFrameに変換してCSVに保存
     df_comments = pd.DataFrame(all_comments)
-    df_comments.to_csv('data/top_videos_comments.csv', index=False, encoding='utf-8')
+    df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
