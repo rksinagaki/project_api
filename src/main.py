@@ -66,7 +66,7 @@ def get_video():
         if video_ids:
             videos_response = youtube.videos().list(
                 part='snippet,statistics,contentDetails',
-                id=','.join(video_ids)
+                id=','.join(video_ids) # for文使わずリストのすべての要素を渡せるっぽい
             ).execute()
 
             # 各動画の詳細情報を抽出
@@ -89,7 +89,7 @@ def get_video():
                     'like_count': int(like_count),
                     'comment_count': int(comment_count),
                     'duration': duration,
-                    'tags': tags
+                    'tags': ','.join(tags) # なぜか取れた
                 })
 
         next_page_token = playlist_response.get('nextPageToken')
@@ -152,9 +152,9 @@ if __name__ == '__main__':
     # df_channel.to_csv('data/channel.csv', index=False, encoding='utf-8')
     # print("チャンネル情報をchannel.csvに保存しました。")
 
-    # df_videos = pd.DataFrame(get_video())
-    # df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
-    # print("動画情報をyoutube_videos.csvに保存しました。")
+    df_videos = pd.DataFrame(get_video())
+    df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
+    print("動画情報をyoutube_videos.csvに保存しました。")
 
     # # 上位50件の動画情報を取得
     # top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=5) #本来は50
@@ -171,12 +171,13 @@ if __name__ == '__main__':
     # df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
     # print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
 
-    channels_response = youtube.channels().list(
-            part='statistics, contentDetails, brandingSettings',
-            id=CHANNEL_ID
-        ).execute()
-
-    playlist_id = channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+    # videos_response = youtube.videos().list(
+    #             part='snippet,statistics,contentDetails',
+    #             id='eaIiiYhYx5o' # for文使わずリストのすべての要素を渡せるっぽい
+    #         ).execute()
+    
+    # tags = videos_response['items'][0]['snippet'].get('tags', [])
+    # print(tags)
 
 
 
@@ -186,3 +187,17 @@ if __name__ == '__main__':
     # # 上位 num_videos 件を抽出
     # top_videos = sorted_videos[:num_videos]
     # print(top_videos)
+
+    # all_videos_data = []
+    # videos_response = youtube.videos().list(
+    #             part='snippet,statistics,contentDetails',
+    #             id=','.join(['IvDTkTKi5pA','yw8OmnujQdc', 'YNNDVIJHSHQ', 'J5Z7tIq7bco']) # for文使わずリストのすべての要素を渡せるっぽい
+    #         ).execute()
+    # for video_data in videos_response['items']:
+    # # video_data['snippet']の中身全体を出力して確認
+    #     tags = video_data['snippet'].get('tags', [])
+    #     all_videos_data.append({
+    #                         'tags': tags
+    #                     })
+
+    # print(all_videos_data)
