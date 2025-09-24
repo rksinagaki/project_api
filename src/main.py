@@ -3,6 +3,9 @@ import pandas as pd
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
+# /////////////////
+# 環境変数読み込み
+# /////////////////
 load_dotenv() 
 
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
@@ -77,7 +80,7 @@ def get_video():
                 view_count = video_data['statistics'].get('viewCount', 0)
                 like_count = video_data['statistics'].get('likeCount', 0)
                 comment_count = video_data['statistics'].get('commentCount', 0)
-                # 動画の長さ
+                # 動画の長さ(謎の形式になっている)
                 duration = video_data['contentDetails']['duration']
                 tags = video_data['snippet'].get('tags', [])
 
@@ -120,13 +123,13 @@ def get_uploads_playlist_id(channel_id):
     return channels_response['items'][0]['contentDetails']['relatedPlaylists']['uploads']
 
 # ここの処理
-def get_comments_for_video(video_id, max_comments_per_video=100):# 本来は100
+def get_comments_for_video(video_id, max_comments_per_video=100):
     comments_data = []
     
     comment_threads_response = youtube.commentThreads().list(
         part='snippet',
         videoId=video_id,
-        maxResults=min(100, max_comments_per_video),#本来は100
+        maxResults=min(100, max_comments_per_video),
         pageToken=None,
         order='relevance'
     ).execute()
@@ -153,51 +156,20 @@ if __name__ == '__main__':
     # print("チャンネル情報をchannel.csvに保存しました。")
 
     df_videos = pd.DataFrame(get_video())
-    df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
-    print("動画情報をyoutube_videos.csvに保存しました。")
+    # df_videos.to_csv('data/videos.csv', index=False, encoding='utf-8')
+    # print("動画情報をyoutube_videos.csvに保存しました。")
 
     # # 上位50件の動画情報を取得
-    # top_videos_df = get_most_viewed_videos(CHANNEL_ID, num_videos=5) #本来は50
+    top_videos_df = df_videos.sort_values(by='view_count', ascending=False).head(10) #本来は50
 
-    # all_comments = []
-    # for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
-    #     video_id = row['video_id']
-    #     video_title = row['title']
-    #     comments = get_comments_for_video(video_id, max_comments_per_video=100) # [{}, {}, {}, {}]という構造になっている
-    #     all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
+    all_comments = []
+    for index, row in top_videos_df.iterrows(): # index,rowは基本的にiterrowsでは使う、表をインデックスと行に分けてfor文が回せる
+        video_id = row['video_id']
+        video_title = row['title']
+        comments = get_comments_for_video(video_id, max_comments_per_video=100) # [{}, {}, {}, {}]という構造になっている
+        all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
 
-    # # 取得したコメントをDataFrameに変換してCSVに保存
-    # df_comments = pd.DataFrame(all_comments)
-    # df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
-    # print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
-
-    # videos_response = youtube.videos().list(
-    #             part='snippet,statistics,contentDetails',
-    #             id='eaIiiYhYx5o' # for文使わずリストのすべての要素を渡せるっぽい
-    #         ).execute()
-    
-    # tags = videos_response['items'][0]['snippet'].get('tags', [])
-    # print(tags)
-
-
-
-    # all_videos = get_video()
-    # num_videos = 10 # 本来は50
-    # sorted_videos = sorted(all_videos, key=lambda x: x['view_count'], reverse=True)
-    # # 上位 num_videos 件を抽出
-    # top_videos = sorted_videos[:num_videos]
-    # print(top_videos)
-
-    # all_videos_data = []
-    # videos_response = youtube.videos().list(
-    #             part='snippet,statistics,contentDetails',
-    #             id=','.join(['IvDTkTKi5pA','yw8OmnujQdc', 'YNNDVIJHSHQ', 'J5Z7tIq7bco']) # for文使わずリストのすべての要素を渡せるっぽい
-    #         ).execute()
-    # for video_data in videos_response['items']:
-    # # video_data['snippet']の中身全体を出力して確認
-    #     tags = video_data['snippet'].get('tags', [])
-    #     all_videos_data.append({
-    #                         'tags': tags
-    #                     })
-
-    # print(all_videos_data)
+    # 取得したコメントをDataFrameに変換してCSVに保存
+    df_comments = pd.DataFrame(all_comments)
+    df_comments.to_csv('data/top_videos_comments.csv', index=False, encoding='utf-8')
+    print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
