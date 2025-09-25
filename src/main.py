@@ -1,5 +1,6 @@
 import os
-# import boto3
+from io import StringIO
+import boto3
 import pandas as pd
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
@@ -11,6 +12,7 @@ load_dotenv()
 
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
 API_KEY = os.environ.get("API_KEY")
+BUCKET_NAME = os.environ.get('BUCKET_NAME')
 
 youtube = build('youtube',
                 'v3',
@@ -152,12 +154,32 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 # 実行
 # /////////////////
 if __name__ == '__main__':
+    s3 = boto3.client('s3')
+    output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
+    bucket_name = 'BUCKET_NAME'
+
     df_channel = pd.DataFrame(get_channel())
-    df_channel.to_csv('/app/data/channel.csv', index=False, encoding='utf-8') 
+    # df_channel.to_csv('/app/data/channel.csv', index=False, encoding='utf-8') 
+
+    df_channel.to_csv(output_channel, index=False) # ここ注意→仮想ファイルにCSVで書き込んでいるイメージ
+    # バイナリデータを扱うときはput_objectを使うらしい
+    s3.put_object(
+        Bucket=bucket_name,
+        Key='data/raw_data/sukima_channel.csv',
+        Body=output_channel.getvalue() # getvalue()で文字列を取得
+    )
     print("チャンネル情報をchannel.csvに保存しました。")
 
+
+    output_video = StringIO()
     df_videos = pd.DataFrame(get_video())
-    df_videos.to_csv('/app/data/videos.csv', index=False, encoding='utf-8')
+    df_videos.to_csv(output_video, index=False)
+    # バイナリデータを扱うときはput_object
+    s3.put_object(
+        Bucket=bucket_name,
+        Key='data/raw_data/sukima_video.csv',
+        Body=output_video.getvalue() # getvalue()で文字列を取得
+    )
     print("動画情報をyoutube_videos.csvに保存しました。")
 
     # 上位100件の動画情報を取得
