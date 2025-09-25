@@ -1,4 +1,5 @@
 import os
+# import boto3
 import pandas as pd
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
@@ -6,7 +7,7 @@ from dotenv import load_dotenv
 # /////////////////
 # 環境変数読み込み
 # /////////////////
-load_dotenv() 
+load_dotenv()
 
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
 API_KEY = os.environ.get("API_KEY")
@@ -152,11 +153,11 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 # /////////////////
 if __name__ == '__main__':
     df_channel = pd.DataFrame(get_channel())
-    df_channel.to_csv('../data/channel.csv', index=False, encoding='utf-8')
+    df_channel.to_csv('/app/data/channel.csv', index=False, encoding='utf-8') 
     print("チャンネル情報をchannel.csvに保存しました。")
 
     df_videos = pd.DataFrame(get_video())
-    df_videos.to_csv('../data/videos.csv', index=False, encoding='utf-8')
+    df_videos.to_csv('/app/data/videos.csv', index=False, encoding='utf-8')
     print("動画情報をyoutube_videos.csvに保存しました。")
 
     # 上位100件の動画情報を取得
@@ -171,5 +172,5 @@ if __name__ == '__main__':
 
     # 取得したコメントをDataFrameに変換してCSVに保存
     df_comments = pd.DataFrame(all_comments)
-    df_comments.to_csv('../data/top_videos_comments.csv', index=False, encoding='utf-8')
+    df_comments.to_csv('/app/data/top_videos_comments.csv', index=False, encoding='utf-8')
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
