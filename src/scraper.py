@@ -167,29 +167,29 @@ if __name__ == '__main__':
 
     output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
     df_channel = pd.DataFrame(get_channel())
-    df_channel.to_json('./data/channel.json', orient='records', lines=True, force_ascii=False) 
+    # df_channel.to_json('./data/channel.json', orient='records', lines=True, force_ascii=False) 
 
-    # df_channel.to_json(output_channel, orient='records', lines=True, force_ascii=False) # ここ注意→仮想ファイルにCSVで書き込んでいるイメージ
+    df_channel.to_json(output_channel, orient='records', lines=True, force_ascii=False) # ここ注意→仮想ファイルにCSVで書き込んでいるイメージ
     # バイナリデータを扱うときはput_objectを使うらしい
-    # s3.put_object(
-    #     Bucket=BUCKET_NAME,
-    #     Key='data/raw_data/sukima_channel.json',
-    #     Body=output_channel.getvalue() # getvalue()で文字列を取得
-    # )
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key='data/raw_data/sukima_channel.json',
+        Body=output_channel.getvalue() # getvalue()で文字列を取得
+    )
     print("チャンネル情報をchannel.csvに保存しました。")
 
 
     output_video = StringIO()
     df_videos = pd.DataFrame(get_video())
-    df_videos.to_json('./data/videos.json', orient='records', lines=True, force_ascii=False)
+    # df_videos.to_json('./data/videos.json', orient='records', lines=True, force_ascii=False)
 
-    # df_videos.to_json(output_video, orient='records', lines=True, force_ascii=False)
+    df_videos.to_json(output_video, orient='records', lines=True, force_ascii=False)
     # バイナリデータを扱うときはput_object
-    # s3.put_object(
-    #     Bucket=BUCKET_NAME,
-    #     Key='data/raw_data/sukima_video.json',
-    #     Body=output_video.getvalue() # getvalue()で文字列を取得
-    # )
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key='data/raw_data/sukima_video.json',
+        Body=output_video.getvalue() # getvalue()で文字列を取得
+    )
     print("動画情報をyoutube_videos.csvに保存しました。")
 
     # 上位100件の動画情報を取得
@@ -205,12 +205,12 @@ if __name__ == '__main__':
     # 取得したコメントをDataFrameに変換してCSVに保存
     output_comment = StringIO()
     df_comments = pd.DataFrame(all_comments)
-    df_comments.to_json('./data/top_videos_comments.json', orient='records', lines=True, force_ascii=False)
+    # df_comments.to_json('./data/top_videos_comments.json', orient='records', lines=True, force_ascii=False)
 
-    # df_comments.to_json(output_comment, orient='records', lines=True, force_ascii=False)
-    # s3.put_object(
-    #     Bucket=BUCKET_NAME,
-    #     Key='data/raw_data/sukima_comment.json',
-    #     Body=output_comment.getvalue() # getvalue()で文字列を取得
-    # )
+    df_comments.to_json(output_comment, orient='records', lines=True, force_ascii=False)
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key='data/raw_data/sukima_comment.json',
+        Body=output_comment.getvalue() # getvalue()で文字列を取得
+    )
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
