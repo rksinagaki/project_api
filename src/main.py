@@ -1,3 +1,6 @@
+# crdentialsを読み込むことから
+
+
 import os
 from io import StringIO
 import boto3
@@ -154,6 +157,10 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 # 実行
 # /////////////////
 if __name__ == '__main__':
+
+    # ローカルPCにIAMロールを直接付与することはできません。→アクセスキーが必要らしい
+    # ちなみにアクセスキーを設定したら、boto3が自動でそれらのキーを認識して実行するらしい。
+    # 環境変数はサーバーレスサービス内で設定しましょう。
     s3 = boto3.client('s3')
     output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
     bucket_name = 'BUCKET_NAME'
@@ -193,6 +200,12 @@ if __name__ == '__main__':
         all_comments.extend(comments) # extend()は要素を分解してかつ分解したものをリストに格納してくれる
 
     # 取得したコメントをDataFrameに変換してCSVに保存
+    output_comment = StringIO()
     df_comments = pd.DataFrame(all_comments)
-    df_comments.to_csv('/app/data/top_videos_comments.csv', index=False, encoding='utf-8')
+    s3.put_object(
+        Bucket=bucket_name,
+        Key='data/raw_data/sukima_comment.csv',
+        Body=output_video.getvalue() # getvalue()で文字列を取得
+    )
+    # df_comments.to_csv('/app/data/top_videos_comments.csv', index=False, encoding='utf-8')
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
