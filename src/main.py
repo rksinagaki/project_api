@@ -1,6 +1,4 @@
 # crdentialsを読み込むことから
-
-
 import os
 from io import StringIO
 import boto3
@@ -164,10 +162,11 @@ if __name__ == '__main__':
     # 環境変数はサーバーレスサービス内で設定しましょう。
     s3 = boto3.client('s3',
                       aws_access_key_id=ACCESS_ID,
-                      aws_secret_access_key=SECRET_KEY)
-    output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
-    bucket_name = 'BUCKET_NAME'
+                      aws_secret_access_key=SECRET_KEY,
+                      region_name='ap-northeast-1')
+    bucket_name = BUCKET_NAME
 
+    output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
     df_channel = pd.DataFrame(get_channel())
     # df_channel.to_csv('/app/data/channel.csv', index=False, encoding='utf-8') 
 
@@ -205,10 +204,11 @@ if __name__ == '__main__':
     # 取得したコメントをDataFrameに変換してCSVに保存
     output_comment = StringIO()
     df_comments = pd.DataFrame(all_comments)
+    df_comments.to_csv(output_comment, index=False)
     s3.put_object(
         Bucket=bucket_name,
         Key='data/raw_data/sukima_comment.csv',
-        Body=output_video.getvalue() # getvalue()で文字列を取得
+        Body=output_comment.getvalue() # getvalue()で文字列を取得
     )
     # df_comments.to_csv('/app/data/top_videos_comments.csv', index=False, encoding='utf-8')
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
