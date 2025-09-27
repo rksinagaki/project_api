@@ -16,6 +16,8 @@ load_dotenv()
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
 API_KEY = os.environ.get("API_KEY")
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
+ACCESS_ID = os.environ.get('ACCESS_ID')
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 youtube = build('youtube',
                 'v3',
@@ -157,11 +159,12 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 # 実行
 # /////////////////
 if __name__ == '__main__':
-
     # ローカルPCにIAMロールを直接付与することはできません。→アクセスキーが必要らしい
     # ちなみにアクセスキーを設定したら、boto3が自動でそれらのキーを認識して実行するらしい。
     # 環境変数はサーバーレスサービス内で設定しましょう。
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3',
+                      aws_access_key_id=ACCESS_ID,
+                      aws_secret_access_key=SECRET_KEY)
     output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
     bucket_name = 'BUCKET_NAME'
 
