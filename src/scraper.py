@@ -1,4 +1,3 @@
-# crdentialsを読み込むことから
 import os
 from io import StringIO
 import boto3
@@ -16,6 +15,7 @@ API_KEY = os.environ.get("API_KEY")
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
 ACCESS_ID = os.environ.get('ACCESS_ID')
 SECRET_KEY = os.environ.get('SECRET_KEY')
+REGION_NAME = os.environ.get('REGION_NAME')
 
 youtube = build('youtube',
                 'v3',
@@ -163,32 +163,33 @@ if __name__ == '__main__':
     s3 = boto3.client('s3',
                       aws_access_key_id=ACCESS_ID,
                       aws_secret_access_key=SECRET_KEY,
-                      region_name='ap-northeast-1')
-    bucket_name = BUCKET_NAME
+                      region_name=REGION_NAME)
 
     output_channel = StringIO() # 仮想のファイルにデータを追記するイメージ、ファイルが異なるのであればその都度立てる
     df_channel = pd.DataFrame(get_channel())
-    # df_channel.to_csv('/app/data/channel.csv', index=False, encoding='utf-8') 
+    df_channel.to_json('./data/channel.json', orient='records', lines=True, force_ascii=False) 
 
-    df_channel.to_csv(output_channel, index=False) # ここ注意→仮想ファイルにCSVで書き込んでいるイメージ
+    # df_channel.to_json(output_channel, orient='records', lines=True, force_ascii=False) # ここ注意→仮想ファイルにCSVで書き込んでいるイメージ
     # バイナリデータを扱うときはput_objectを使うらしい
-    s3.put_object(
-        Bucket=bucket_name,
-        Key='data/raw_data/sukima_channel.csv',
-        Body=output_channel.getvalue() # getvalue()で文字列を取得
-    )
+    # s3.put_object(
+    #     Bucket=BUCKET_NAME,
+    #     Key='data/raw_data/sukima_channel.json',
+    #     Body=output_channel.getvalue() # getvalue()で文字列を取得
+    # )
     print("チャンネル情報をchannel.csvに保存しました。")
 
 
     output_video = StringIO()
     df_videos = pd.DataFrame(get_video())
-    df_videos.to_csv(output_video, index=False)
+    df_videos.to_json('./data/videos.json', orient='records', lines=True, force_ascii=False)
+
+    # df_videos.to_json(output_video, orient='records', lines=True, force_ascii=False)
     # バイナリデータを扱うときはput_object
-    s3.put_object(
-        Bucket=bucket_name,
-        Key='data/raw_data/sukima_video.csv',
-        Body=output_video.getvalue() # getvalue()で文字列を取得
-    )
+    # s3.put_object(
+    #     Bucket=BUCKET_NAME,
+    #     Key='data/raw_data/sukima_video.json',
+    #     Body=output_video.getvalue() # getvalue()で文字列を取得
+    # )
     print("動画情報をyoutube_videos.csvに保存しました。")
 
     # 上位100件の動画情報を取得
@@ -204,11 +205,12 @@ if __name__ == '__main__':
     # 取得したコメントをDataFrameに変換してCSVに保存
     output_comment = StringIO()
     df_comments = pd.DataFrame(all_comments)
-    df_comments.to_csv(output_comment, index=False)
-    s3.put_object(
-        Bucket=bucket_name,
-        Key='data/raw_data/sukima_comment.csv',
-        Body=output_comment.getvalue() # getvalue()で文字列を取得
-    )
-    # df_comments.to_csv('/app/data/top_videos_comments.csv', index=False, encoding='utf-8')
+    df_comments.to_json('./data/top_videos_comments.json', orient='records', lines=True, force_ascii=False)
+
+    # df_comments.to_json(output_comment, orient='records', lines=True, force_ascii=False)
+    # s3.put_object(
+    #     Bucket=BUCKET_NAME,
+    #     Key='data/raw_data/sukima_comment.json',
+    #     Body=output_comment.getvalue() # getvalue()で文字列を取得
+    # )
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
