@@ -1,11 +1,11 @@
-FROM python:3.11-slim
+FROM public.ecr.aws/lambda/python:3.11
 
-WORKDIR /app
+WORKDIR /var/task
 
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY src/app.py .
 
-CMD ["/bin/bash"]
+CMD ["app.handler"]
