@@ -2,10 +2,10 @@ FROM public.ecr.aws/lambda/python:3.11
 
 WORKDIR /var/task
 
-COPY requirements.txt .
+COPY requirements_lambda.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements_lambda.txt
 
-COPY src/app.py .
+COPY src/app_lambda.py .
 
-CMD ["app.handler"]
+CMD ["app_lambda.lambda_handler"]

@@ -3,18 +3,13 @@ from io import StringIO
 import boto3
 import pandas as pd
 from googleapiclient.discovery import build
-from dotenv import load_dotenv
 
 # /////////////////
 # 環境変数読み込み
 # /////////////////
-load_dotenv()
-
 CHANNEL_ID = os.environ.get("CHANNEL_ID")
 API_KEY = os.environ.get("API_KEY")
 BUCKET_NAME = os.environ.get('BUCKET_NAME')
-ACCESS_ID = os.environ.get('ACCESS_ID')
-SECRET_KEY = os.environ.get('SECRET_KEY')
 REGION_NAME = os.environ.get('REGION_NAME')
 
 youtube = build('youtube',
@@ -151,8 +146,6 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 
 def lambda_handler(event, context):
     s3 = boto3.client('s3',
-                      aws_access_key_id=ACCESS_ID,
-                      aws_secret_access_key=SECRET_KEY,
                       region_name=REGION_NAME)
 
     output_channel = StringIO()
