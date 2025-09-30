@@ -66,6 +66,14 @@ df_video = df_video.withColumn(
 )
 
 # durationを秒数に変換
+df_video = df_video.withColumn(
+    "total_seconds",
+    (
+        F.regexp_extract(F.col("duration_str"), "(\d+)M", 1).cast(LongType()) * 60
+    ) + (
+        F.regexp_extract(F.col("duration_str"), "(\d+)S", 1).cast(LongType())
+    )
+)
 
 # commentデータ型変更
 # published_atコラムをデータ型に変換
