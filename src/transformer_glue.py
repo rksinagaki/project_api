@@ -5,7 +5,9 @@ from pyspark.sql.types import StructType, StructField, StringType, LongType, Tim
 from pyspark.sql.window import Window
 
 spark = SparkSession.builder.appName("MyPySparkApp").getOrCreate()
-spark.sparkContext.setLogLevel("ERROR") 
+
+S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed" 
+S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data" 
 
 # ////////////
 # スキーマ設計
@@ -45,9 +47,9 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
-df_channel = spark.read.schema(channel_schema).json("./data/channel.json")
-df_video = spark.read.schema(video_schema).json("./data/videos.json")
-df_comment = spark.read.schema(comment_schema).json("./data/top_videos_comments.json")
+df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}/channel.json")
+df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}/videos.json")
+df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}/top_videos_comments.json")
 
 # ////////////
 # データ型変換
@@ -115,10 +117,9 @@ df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 # ////////////
 # データの格納
 # ////////////
-# S3_BASE_PATH = "s3://<YOUR_S3_BUCKET>/data/transformed" 
-# df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/channel")
-# df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/video")
-# df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/comment")
+df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/channel")
+df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/video")
+df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/comment")
 
 # 確認-------------------------------
 # df_video.printSchema()
