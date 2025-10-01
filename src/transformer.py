@@ -115,10 +115,9 @@ df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 # ////////////
 # データの格納
 # ////////////
-# S3_BASE_PATH = "s3://<YOUR_S3_BUCKET>/data/transformed" 
-# df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/channel")
-# df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/video")
-# df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH}/comment")
+df_channel.write.mode("overwrite").parquet("./data/transformed/channel")
+df_video.write.mode("overwrite").parquet("./data/transformed/video")
+df_comment.write.mode("overwrite").parquet("./data/transformed/comment")
 
 # 確認-------------------------------
 # df_video.printSchema()
