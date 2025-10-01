@@ -54,38 +54,71 @@ df_comment = spark.read.schema(comment_schema).json("./data/top_videos_comments.
 # channelデータ型変更
 # published_atコラムをデータ型に変換
 df_channel = df_channel.withColumn(
-    'published_at', 
-    F.to_timestamp(F.col('published_at'), "yyyy-MM-dd\\'T\\'HH:mm:ssX")
+    'published_at',
+    F.col('published_at').cast('timestamp')
 )
 
 # videoデータ型変更
 # published_atコラムをデータ型に変換
 df_video = df_video.withColumn(
     'published_at',
-    F.to_timestamp(F.col('published_at'), "yyyy-MM-dd\\'T\\'HH:mm:ssX")
+    F.col('published_at').cast('timestamp')
 )
 
 # durationを秒数に変換
 df_video = df_video.withColumn(
     "total_seconds",
     (
-        F.regexp_extract(F.col("duration_str"), "(\d+)M", 1).cast(LongType()) * 60
+        F.coalesce(F.regexp_extract(F.col("duration"), "(\d+)H", 1).cast(LongType()), F.lit(0)) * 3600
     ) + (
-        F.regexp_extract(F.col("duration_str"), "(\d+)S", 1).cast(LongType())
+        F.coalesce(F.regexp_extract(F.col("duration"), "(\d+)M", 1).cast(LongType()), F.lit(0)) * 60
+    ) + (
+        F.coalesce(F.regexp_extract(F.col("duration"), "(\d+)S", 1).cast(LongType()), F.lit(0))
     )
 )
 
 # commentデータ型変更
 # published_atコラムをデータ型に変換
-df_comment.printSchema()
-column_count = len(df_comment.columns)
-print(column_count)
-df_comment.show(5, truncate = False)
+df_comment = df_comment.withColumn(
+    'published_at',
+    F.col('published_at').cast('timestamp')
+)
+
+# 確認
+# df_video.printSchema()
+# column_count = len(df_video.columns)
+# print(column_count)
+# df_video.show(5, truncate = False)
 
 # ////////////
 # 欠損、重複値処理
 # ////////////
+df_duplicates = df_comment.groupBy('comment_id').count().filter(F.col("count") > 1)
+num_duplicate_keys = df_duplicates.count()
+print(f"重複している {'comment_id'} の種類数: {num_duplicate_keys}")
 
+# 欠損値の確認
+null_check_exprs = [
+    F.sum(F.when(F.col(c).isNull(), 1).otherwise(0)).alias(f"null_count_{c}")
+    for c in df_video.columns
+]
+# df_video.select(*null_check_exprs).show()
+
+# カウントを実行し、結果を整形して表示
+if null_check_exprs:
+    null_df = df_video.select(*null_check_exprs).collect()[0].asDict()
+
+    print(f"【欠損値チェック結果】")
+    print("-----------------------------------")
+    for c in df_video.columns:
+        count = null_df.get(f"null_count_{c}", 0)
+        ratio = null_df.get(f"null_ratio_{c}", 0.0)
+        
+        # NULL が一件でもあるカラムのみ表示（品質レポートをシンプルにするため）
+        if count > 0:
+            print(f"カラム '{c}': {count} 件 ({ratio:.2f}%)")
+            
+    print("-----------------------------------")
 
 # ////////////
 # データの格納

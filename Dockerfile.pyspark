@@ -2,7 +2,7 @@ FROM public.ecr.aws/glue/aws-glue-libs:5
 
 WORKDIR /home/spark/shared/pyspark
 
-COPY requirements_pyspark.txt .
+COPY requirements/requirements_pyspark.txt .
 
 RUN pip install --no-cache-dir -r requirements_pyspark.txt
 
