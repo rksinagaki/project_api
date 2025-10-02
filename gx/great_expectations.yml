@@ -56,8 +56,9 @@ stores:
   validations_store:
     class_name: ValidationsStore
     store_backend:
-      class_name: TupleFilesystemStoreBackend
-      base_directory: uncommitted/validations/
+      class_name: TupleS3StoreBackend
+      bucket: sukima-youtube-bucket
+      prefix: report/validation_results/
 
   evaluation_parameter_store:
     # Evaluation Parameters enable dynamic expectations. Read more here:
@@ -93,8 +94,9 @@ data_docs_sites:
     # set to false to hide how-to buttons in Data Docs
     show_how_to_buttons: true
     store_backend:
-        class_name: TupleFilesystemStoreBackend
-        base_directory: uncommitted/data_docs/local_site/
+        class_name: TupleS3StoreBackend
+        bucket: sukima-youtube-bucket
+        prefix: report/data_docs/
     site_index_builder:
         class_name: DefaultSiteIndexBuilder
 
