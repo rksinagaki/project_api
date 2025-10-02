@@ -6,8 +6,8 @@ from pyspark.sql.window import Window
 
 spark = SparkSession.builder.appName("MyPySparkApp").getOrCreate()
 
-S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed_data" 
-S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data" 
+S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed_data/" 
+S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data/" 
 
 # ////////////
 # スキーマ設計
