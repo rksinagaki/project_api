@@ -50,8 +50,9 @@ stores:
   expectations_store:
     class_name: ExpectationsStore
     store_backend:
-      class_name: TupleFilesystemStoreBackend
-      base_directory: expectations/
+      class_name: TupleS3StoreBackend
+      bucket: sukima-youtube-bucket
+      prefix: expectations/
 
   validations_store:
     class_name: ValidationsStore
