@@ -1,0 +1,60 @@
+{
+  "data_asset_type": null,
+  "expectation_suite_name": "channel_data_quality",
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_set",
+      "kwargs": {
+        "column_set": [
+          "channel_id",
+          "video_count",
+          "published_at",
+          "channel_name",
+          "total_views",
+          "subscriber_count"
+        ],
+        "exact_match": null
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "channel_id"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "channel_id"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_of_type",
+      "kwargs": {
+        "column": "published_at",
+        "type_": "TimestampType"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_of_type",
+      "kwargs": {
+        "column": "subscriber_count",
+        "type_": "LongType"
+      }
+    },
+    {
+      "expectation_type" : "expect_column_values_to_be_of_type",
+      "kwargs" : {
+        "column" : "total_views",
+        "type_" : "LongType"
+      }
+    },
+    {
+      "expectation_type" : "expect_column_values_to_be_of_type",
+      "kwargs" : {
+        "column" : "video_count",
+        "type_" : "LongType"
+      }
+    }
+  ]
+}

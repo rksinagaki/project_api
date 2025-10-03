@@ -3,9 +3,94 @@ from pyspark.sql.functions import col, when, to_date, regexp_replace, trim, lit,
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, BooleanType
 from pyspark.sql.window import Window
+import os
+
+import great_expectations as ge
+from great_expectations.core.batch import RuntimeBatchRequest
+from great_expectations.data_context.types.base import (
+    DataContextConfig,
+    FilesystemStoreBackendDefaults,
+)
 
 spark = SparkSession.builder.appName("MyPySparkApp").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR") 
+
+LOCAL_GX_ROOT = os.path.abspath("./gx/")
+gx_config_path = LOCAL_GX_ROOT 
+SUITE_NAME_CHANNEL = "channel_data_quality"
+SUITE_NAME_VIDEO = "videos_data_quality"
+SUITE_NAME_COMMENT = "comment_data_quality"
+
+# ////////////
+# GXの関数
+# ////////////
+def validate_data_quality(df, suite_name, context_root_dir_s3):
+    # 1. S3からGX設定を読み込むためのコンフィグを定義
+    # data_context_config = DataContextConfig(
+    #     store_backend_defaults=FilesystemStoreBackendDefaults(
+    #         root_directory=context_root_dir_s3
+    #     )
+    # )
+
+    # 2. データコンテキストの初期化 (S3上の設定ファイルgreat_expectations.ymlを参照)
+    # context = ge.DataContext(
+    #     project_config=data_context_config
+    # )
+    
+    context = ge.DataContext(context_root_dir=context_root_dir_s3)
+
+    # 3. 検証対象のDataFrameをRuntimeBatchとして定義
+    # batch_request = RuntimeBatchRequest(
+    #     # 'runtime_parameters'で実際のDataFrameオブジェクトを渡す
+    #     runtime_parameters={"batch_data": df, "batch_identifiers": {"default_identifier": "runtime_batch"}},
+    #     data_connector_name="runtime_data_connector",
+    #     data_asset_name="runtime_asset",
+    #     batch_spec_passthrough={"data_asset_type": "pyspark_dataframe"},
+    # )
+    batch_request = RuntimeBatchRequest(
+        datasource_name="my_datasource", 
+        
+        # 必須引数 2: バッチを特定するための識別子をトップレベルに配置
+        batch_identifiers={
+            "runtime_batch_identifier_name": "runtime_batch" 
+        },
+
+        # データを渡すためのランタイムパラメータ
+        runtime_parameters={
+            "batch_data": df
+        },
+
+        # ymlに定義されたデータコネクタ名とアセット名
+        data_connector_name="default_runtime_data_connector_name", 
+        data_asset_name="my_runtime_asset_name", 
+
+        # PySpark DataFrame であることを指定
+        batch_spec_passthrough={"data_asset_type": "pyspark_dataframe"}
+    )
+
+    validator = context.get_validator(
+        batch_request=batch_request, 
+        expectation_suite_name=suite_name # 実行するExpectation Suiteを指定
+    )
+
+    # 4. 検証の実行
+    results = context.run_validation_operator(
+        "action_list_operator", # デフォルトのValidation Operator
+        # assets_to_validate=[
+        #     {
+        #         "batch_request": batch_request,
+        #         "expectation_suite_name": suite_name
+        #     }
+        # ],
+        assets_to_validate=[validator],
+        run_name="data_quality_check"
+    )
+    
+    if results.success:
+        print(f"Data quality check succeeded for {suite_name}!")
+    else:
+        print(f"Data quality check FAILED for {suite_name}!")
+
 
 # ////////////
 # スキーマ設計
@@ -113,11 +198,26 @@ df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_com
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
 # ////////////
+# GXの実行
+# ////////////
+# df_channnelにGXを適用
+validate_data_quality(df_channel, SUITE_NAME_CHANNEL, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# df_videoにGXを適用
+validate_data_quality(df_video, SUITE_NAME_VIDEO, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# df_commentにGXを適用
+validate_data_quality(df_comment, SUITE_NAME_COMMENT, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# ////////////
 # データの格納
 # ////////////
-df_channel.write.mode("overwrite").parquet("./data/transformed/channel")
-df_video.write.mode("overwrite").parquet("./data/transformed/video")
-df_comment.write.mode("overwrite").parquet("./data/transformed/comment")
+# df_channel.write.mode("overwrite").parquet("./data/transformed/channel")
+# df_video.write.mode("overwrite").parquet("./data/transformed/video")
+# df_comment.write.mode("overwrite").parquet("./data/transformed/comment")
 
 # 確認-------------------------------
 # df_video.printSchema()

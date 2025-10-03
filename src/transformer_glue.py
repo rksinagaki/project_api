@@ -4,10 +4,64 @@ from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, BooleanType
 from pyspark.sql.window import Window
 
+import great_expectations as ge
+from great_expectations.core.batch import RuntimeBatchRequest
+from great_expectations.data_context.types.base import (
+    DataContextConfig,
+    FilesystemStoreBackendDefaults,
+)
+
 spark = SparkSession.builder.appName("MyPySparkApp").getOrCreate()
+spark.sparkContext.setLogLevel("ERROR") 
+
 
 S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed_data/" 
-S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data/" 
+S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data/"
+SUITE_NAME_CHANNEL = "channel_data_quality"
+SUITE_NAME_VIDEO = "videos_data_quality"
+SUITE_NAME_COMMENT = "comment_data_quality"
+
+gx_config_path = "./great_expectations.yml"
+
+# ////////////
+# GXの関数
+# ////////////
+def validate_data_quality(df, suite_name, context_root_dir_s3):
+    context = ge.DataContext(context_root_dir=context_root_dir_s3)
+
+    batch_request = RuntimeBatchRequest(
+        datasource_name="my_datasource", 
+
+        batch_identifiers={
+            "runtime_batch_identifier_name": "runtime_batch" 
+        },
+
+        runtime_parameters={
+            "batch_data": df
+        },
+
+        data_connector_name="default_runtime_data_connector_name", 
+        data_asset_name="my_runtime_asset_name", 
+
+        batch_spec_passthrough={"data_asset_type": "pyspark_dataframe"}
+    )
+
+    validator = context.get_validator(
+        batch_request=batch_request, 
+        expectation_suite_name=suite_name # 実行するExpectation Suiteを指定
+    )
+
+    results = context.run_validation_operator(
+        "action_list_operator", 
+        assets_to_validate=[validator],
+        run_name="data_quality_check"
+    )
+    
+    if results.success:
+        print(f"Data quality check succeeded for {suite_name}!")
+    else:
+        print(f"Data quality check FAILED for {suite_name}!")
+
 
 # ////////////
 # スキーマ設計
@@ -115,16 +169,25 @@ df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_com
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
 # ////////////
+# GXの実行
+# ////////////
+# df_channnelにGXを適用
+validate_data_quality(df_channel, SUITE_NAME_CHANNEL, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# df_videoにGXを適用
+validate_data_quality(df_video, SUITE_NAME_VIDEO, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# df_commentにGXを適用
+validate_data_quality(df_comment, SUITE_NAME_COMMENT, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
+print("Data quality check passed. Proceeding to S3 write.")
+
+# ////////////
 # データの格納
 # ////////////
 df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/channel")
 df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/video")
 df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/comment")
-
-# 確認-------------------------------
-# df_video.printSchema()
-# column_count = len(df_video.columns)
-# print(column_count)
-# df_video.show(5, truncate = False)
 
 spark.stop()
