@@ -4,9 +4,9 @@ stores:
   expectations_store:
     class_name: ExpectationsStore
     store_backend:
-        class_name: TupleS3StoreBackend
-        bucket: sukima-youtube-bucket
-        prefix: gx/expectations/
+      class_name: TupleS3StoreBackend
+      bucket: sukima-youtube-bucket
+      prefix: gx/expectations/
 
   validations_store:
     class_name: ValidationsStore
