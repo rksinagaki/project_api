@@ -17,7 +17,7 @@
       }
     },
     {
-      "expectation_type": "expect_column_to_not_be_null",
+      "expectation_type": "expect_column_values_to_not_be_null",
       "kwargs": {
         "column": "channel_id"
       }
@@ -32,28 +32,28 @@
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "published_at",
-        "type": "TimestampType"
+        "type_": "TimestampType"
       }
     },
     {
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "subscriber_count",
-        "type": "LongType"
+        "type_": "LongType"
       }
     },
     {
       "expectation_type" : "expect_column_values_to_be_of_type",
       "kwargs" : {
         "column" : "total_views",
-        "type" : "LongType"
+        "type_" : "LongType"
       }
     },
     {
       "expectation_type" : "expect_column_values_to_be_of_type",
       "kwargs" : {
         "column" : "video_count",
-        "type" : "LongType"
+        "type_" : "LongType"
       }
     }
   ]

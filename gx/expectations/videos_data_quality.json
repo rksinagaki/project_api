@@ -19,7 +19,7 @@
       }
     },
     {
-      "expectation_type" : "expect_column_to_not_be_null",
+      "expectation_type" : "expect_column_values_to_not_be_null",
       "kwargs" : {
         "column" : "video_id"
       }
@@ -34,35 +34,35 @@
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "published_at",
-        "type": "TimestampType"
+        "type_": "TimestampType"
       }
     },
     {
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
-        "column": "duration",
-        "type": "LongType"
+        "column": "total_seconds",
+        "type_": "LongType"
       }
     },
     {
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "like_count",
-        "type": "LongType"
+        "type_": "LongType"
       }
     },
     {
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "comment_count",
-        "type": "LongType"
+        "type_": "LongType"
       }
     },
     {
       "expectation_type": "expect_column_values_to_be_of_type",
       "kwargs": {
         "column": "view_count",
-        "type": "LongType"
+        "type_": "LongType"
       }
     }
   ]
