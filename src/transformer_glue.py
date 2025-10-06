@@ -116,6 +116,7 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
+# S3_BASE_PATH = s3://sukima-youtube-bucket/data/raw_data/
 df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}sukima_channel.json")
 df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}sukima_video.json")
 df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}sukima_comment.json")
