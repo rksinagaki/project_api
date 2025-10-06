@@ -202,9 +202,9 @@ def lambda_handler(event, context):
             "statusCode": 200,
             "bucket_name": BUCKET_NAME, 
             "input_keys": [
-                channel_key,
-                video_key,
-                comment_key
+                f"s3://{BUCKET_NAME}/{channel_key}",
+                f"s3://{BUCKET_NAME}/{video_key}",
+                f"s3://{BUCKET_NAME}/{comment_key}"
             ],
             "execution_id": execution_id 
         }
