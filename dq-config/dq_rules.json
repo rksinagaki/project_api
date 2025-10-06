@@ -1,0 +1,36 @@
+{
+  "Rules": [
+    {
+      "Expression": "IsNotNull(channel_id)",
+      "Description": "channel_nameにNULLがないこと"
+    },
+    {
+      "Expression": "IsUnique(channel_id)",
+      "Description": "channel_idは一意であること (重複値処理の確認)"
+    },
+    {
+      "Expression": "IsNotNull(video_id)",
+      "Description": "video_idにNULLがないこと"
+    },
+    {
+      "Expression": "IsUnique(video_id)",
+      "Description": "video_idは一意であること (重複値処理の確認)"
+    },
+    {
+      "Expression": "Completeness(total_seconds) >= 0.90",
+      "Description": "total_secondsは90%以上完全であること"
+    },
+    {
+      "Expression": "IsNotNull(comment_id)",
+      "Description": "comment_idにNULLがないこと (欠損値処理の確認)"
+    },
+    {
+      "Expression": "IsUnique(comment_id)",
+      "Description": "comment_idにNULLがないこと (欠損値処理の確認)"
+    },
+    {
+      "Expression": "Completeness(published_at) >= 0.90",
+      "Description": "published_atは90%以上完全であること"
+    }
+  ]
+}

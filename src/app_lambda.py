@@ -159,7 +159,6 @@ def lambda_handler(event, context):
     )
     print("チャンネル情報をchannel.csvに保存しました。")
 
-
     output_video = StringIO()
     df_videos = pd.DataFrame(get_video())
 
@@ -171,7 +170,7 @@ def lambda_handler(event, context):
     )
     print("動画情報をyoutube_videos.csvに保存しました。")
 
-    top_videos_df = df_videos.sort_values(by='view_count', ascending=False).head(10) #本来は100
+    top_videos_df = df_videos.sort_values(by='view_count', ascending=False).head(100) #本来は100
 
     all_comments = []
     for index, row in top_videos_df.iterrows():
@@ -190,3 +189,12 @@ def lambda_handler(event, context):
         Body=output_comment.getvalue()
     )
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
+
+
+    # S3に空のファイル（または簡単な完了メッセージ）を保存する
+    s3.put_object(
+        Bucket=BUCKET_NAME,
+        Key='data/raw_data/success_files/job_trigger.txt',
+        Body='ETL raw data collection complete.' 
+    )
+    print(f"トリガーファイルをS3に保存しました。")

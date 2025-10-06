@@ -3,65 +3,55 @@ from pyspark.sql.functions import col, when, to_date, regexp_replace, trim, lit,
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, BooleanType
 from pyspark.sql.window import Window
+from awsglue.dynamicframe import DynamicFrame
+from awsgluedq.transforms import EvaluateDataQuality
 
-import great_expectations as ge
-from great_expectations.core.batch import RuntimeBatchRequest
-from great_expectations.data_context.types.base import (
-    DataContextConfig,
-    FilesystemStoreBackendDefaults,
-)
+## @params: [JOB_NAME]
+args = getResolvedOptions(sys.argv, ['JOB_NAME'])
 
-spark = SparkSession.builder.appName("MyPySparkApp").getOrCreate()
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+job = Job(glueContext)
+job.init(args['JOB_NAME'], args)
 spark.sparkContext.setLogLevel("ERROR") 
-
 
 S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed_data/" 
 S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data/"
-SUITE_NAME_CHANNEL = "channel_data_quality"
-SUITE_NAME_VIDEO = "videos_data_quality"
-SUITE_NAME_COMMENT = "comment_data_quality"
-
-gx_config_path = "./great_expectations.yml"
 
 # ////////////
-# GXの関数
+# DQの関数
 # ////////////
-def validate_data_quality(df, suite_name, context_root_dir_s3):
-    context = ge.DataContext(context_root_dir=context_root_dir_s3)
-
-    batch_request = RuntimeBatchRequest(
-        datasource_name="my_datasource", 
-
-        batch_identifiers={
-            "runtime_batch_identifier_name": "runtime_batch" 
-        },
-
-        runtime_parameters={
-            "batch_data": df
-        },
-
-        data_connector_name="default_runtime_data_connector_name", 
-        data_asset_name="my_runtime_asset_name", 
-
-        batch_spec_passthrough={"data_asset_type": "pyspark_dataframe"}
-    )
-
-    validator = context.get_validator(
-        batch_request=batch_request, 
-        expectation_suite_name=suite_name # 実行するExpectation Suiteを指定
-    )
-
-    results = context.run_validation_operator(
-        "action_list_operator", 
-        assets_to_validate=[validator],
-        run_name="data_quality_check"
-    )
+def run_data_quality_check(df, glueContext, df_name):
+    dyf_to_check = DynamicFrame.fromDF(df, glueContext, df_name)
     
-    if results.success:
-        print(f"Data quality check succeeded for {suite_name}!")
-    else:
-        print(f"Data quality check FAILED for {suite_name}!")
+    print(f"--- Running Data Quality Check for {df_name} ---")
 
+    data_quality_output = dyf_to_check.evaluateDataQuality()
+
+    dq_results = data_quality_output.data_quality_evaluation_results
+    if not dq_results.success:
+        print(f"!!! Data Quality Check FAILED for {df_name}. Errors found: {dq_results.num_errors} !!!")
+    else:
+        print(f"Data Quality Check PASSED for {df_name}.")
+    return True
+
+# ルールの読み込み
+dqdl_ruleset_string = """
+Rules = [
+    # 1. channel_id は必ず存在すること (null, 欠損値ではない)
+    IsComplete "channel_id",
+    
+    # 2. channel_id には重複がないこと (ユニーク制約)
+    IsUnique "channel_id",
+    
+    # 3. published_at が90%以上埋まっていること (あなたの要望)
+    Completeness "published_at" >= 0.90,
+    
+    # 4. created_at の値が有効な日付形式であること (型検証)
+    IsOfType "created_at", "date"
+]
+"""
 
 # ////////////
 # スキーマ設計
@@ -101,9 +91,9 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
-df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}/channel.json")
-df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}/videos.json")
-df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}/top_videos_comments.json")
+df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}sukima_channel.json")
+df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}sukima_video.json")
+df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}sukima_comment.json")
 
 # ////////////
 # データ型変換
@@ -169,25 +159,17 @@ df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_com
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
 # ////////////
-# GXの実行
+# DataQualityの実行
 # ////////////
-# df_channnelにGXを適用
-validate_data_quality(df_channel, SUITE_NAME_CHANNEL, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
-print("Data quality check passed. Proceeding to S3 write.")
-
-# df_videoにGXを適用
-validate_data_quality(df_video, SUITE_NAME_VIDEO, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
-print("Data quality check passed. Proceeding to S3 write.")
-
-# df_commentにGXを適用
-validate_data_quality(df_comment, SUITE_NAME_COMMENT, gx_config_path) # データの検証を実行-失敗すればここでジョブが停止
-print("Data quality check passed. Proceeding to S3 write.")
+run_data_quality_check(df_channel, glueContext, "channel")
+run_data_quality_check(df_video, glueContext, "video")
+run_data_quality_check(df_comment, glueContext, "comment")
 
 # ////////////
 # データの格納
 # ////////////
-df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/channel")
-df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/video")
-df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}/comment")
+df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_channel")
+df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_video")
+df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_comment")
 
 spark.stop()
