@@ -1,0 +1,56 @@
+{
+  "Comment": "APIスクレイピングとGlue ETLパイプラインのオーケストレーション",
+  "StartAt": "InvokeApiScrapingLambda",
+  "States": {
+    
+    // --- ステップ 1: Lambda関数の実行 ---
+    "InvokeApiScrapingLambda": {
+      "Type": "Task",
+      // Lambda関数を同期的に実行し、Step Functionsの実行をブロックします
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        // [FunctionName]はCDKで動的に設定されますが、ここでは仮のARNを記述
+        "FunctionName": "arn:aws:lambda:ap-northeast-1:123456789012:function:your-api-scraper", 
+        "Payload": {
+          "ExecutionId": "$$.Execution.Id" // 後続処理のためにStep FunctionsのIDをLambdaに渡す
+        }
+      },
+      // 実行が成功したらGlueジョブへ進む
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Next": "RunGlueJobAndWait"
+    },
+    
+    // --- ステップ 2: Glue Jobの実行と待機 ---
+    "RunGlueJobAndWait": {
+      "Type": "Task",
+      // Glue Jobを開始し、そのジョブが完了するまで待機します (.syncで完了を待つ)
+      "Resource": "arn:aws:states:::glue:startJobRun.sync", 
+      "Parameters": {
+        "JobName": "glue-sukima-transform", // あなたのGlue Job名を指定
+        "Arguments": {
+          // Glue Jobに渡す引数を定義。ここではLambdaの出力を利用する想定
+          // "--S3_INPUT_PATH.$": "$.Payload.S3InputPath", // Lambdaの出力S3パスを受け取る
+          "--JOB_RUN_ID": "$$.Execution.Id" // Glueログとの紐付けのためIDを渡す
+        }
+      },
+      // ジョブ実行の失敗時にリトライする
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      // ジョブが成功したら終了
+      "End": true
+    }
+  }
+}
