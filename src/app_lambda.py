@@ -4,6 +4,9 @@ import boto3
 import pandas as pd
 from googleapiclient.discovery import build
 
+# lambdaのeventとは何なのか
+# executation_idとは何なのか
+
 # /////////////////
 # 環境変数読み込み
 # /////////////////
@@ -144,28 +147,33 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
     
     return comments_data
 
+# /////////////////
+# lambda関数実行
+# /////////////////
 def lambda_handler(event, context):
     s3 = boto3.client('s3',
                       region_name=REGION_NAME)
+    
+    execution_id = event.get('ExecutionId', context.aws_request_id)
 
     output_channel = StringIO()
     df_channel = pd.DataFrame(get_channel())
-
     df_channel.to_json(output_channel, orient='records', lines=True, force_ascii=False)
+    channel_key = f'data/raw_data/{execution_id}/sukima_channel.json'
     s3.put_object(
         Bucket=BUCKET_NAME,
-        Key='data/raw_data/sukima_channel.json',
+        Key=channel_key,
         Body=output_channel.getvalue()
     )
     print("チャンネル情報をchannel.csvに保存しました。")
 
     output_video = StringIO()
     df_videos = pd.DataFrame(get_video())
-
     df_videos.to_json(output_video, orient='records', lines=True, force_ascii=False)
+    video_key = f'data/raw_data/{execution_id}/sukima_video.json'
     s3.put_object(
         Bucket=BUCKET_NAME,
-        Key='data/raw_data/sukima_video.json',
+        Key=video_key,
         Body=output_video.getvalue()
     )
     print("動画情報をyoutube_videos.csvに保存しました。")
@@ -181,20 +189,22 @@ def lambda_handler(event, context):
 
     output_comment = StringIO()
     df_comments = pd.DataFrame(all_comments)
-
     df_comments.to_json(output_comment, orient='records', lines=True, force_ascii=False)
+    comment_key = f'data/raw_data/{execution_id}/sukima_comment.json'
     s3.put_object(
         Bucket=BUCKET_NAME,
-        Key='data/raw_data/sukima_comment.json',
+        Key=comment_key,
         Body=output_comment.getvalue()
     )
     print(f"合計 {len(all_comments)} 件のコメントを保存しました。")
 
-
-    # S3に空のファイル（または簡単な完了メッセージ）を保存する
-    s3.put_object(
-        Bucket=BUCKET_NAME,
-        Key='data/raw_data/success_files/job_trigger.txt',
-        Body='ETL raw data collection complete.' 
-    )
-    print(f"トリガーファイルをS3に保存しました。")
+    return {
+            "statusCode": 200,
+            "bucket_name": BUCKET_NAME, 
+            "input_keys": [
+                channel_key,
+                video_key,
+                comment_key
+            ],
+            "execution_id": execution_id 
+        }

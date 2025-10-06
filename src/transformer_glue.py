@@ -1,57 +1,94 @@
-from pyspark.sql import SparkSession
+import sys
+from awsglue.transforms import *
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from awsglue.context import GlueContext
+from awsglue.job import Job
 from pyspark.sql.functions import col, when, to_date, regexp_replace, trim, lit, sum
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, LongType, TimestampType, BooleanType
 from pyspark.sql.window import Window
 from awsglue.dynamicframe import DynamicFrame
 from awsgluedq.transforms import EvaluateDataQuality
+import boto3
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+args = getResolvedOptions(sys.argv, [
+    'JOB_NAME',
+    's3_base_path_raw',
+    's3_base_path_transformed',
+    'dq_report_base_path',
+    'crawler_name',
+    's3_input_path_channel',
+    's3_input_path_video',
+    's3_input_path_comment'
+])
 
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
+
 spark.sparkContext.setLogLevel("ERROR") 
 
-S3_BASE_PATH_TRANSFORMED = "s3://sukima-youtube-bucket/data/transformed_data/" 
-S3_BASE_PATH_RAW = "s3://sukima-youtube-bucket/data/raw_data/"
+# ////////////
+# 環境変数呼び出し
+# ////////////
+S3_BASE_PATH_RAW = args['s3_base_path_raw']
+S3_BASE_PATH_TRANSFORMED = args['s3_base_path_transformed']
+DQ_REPORT_BASE_PATH = args['dq_report_base_path']
+CRAWLER_NAME = args['crawler_name']
+S3_INPUT_PATH_CHANNEL = args['s3_input_path_channel']
+S3_INPUT_PATH_VIDEO = args['s3_input_path_video']
+S3_INPUT_PATH_COMMENT = args['s3_input_path_comment']
 
 # ////////////
 # DQの関数
 # ////////////
-def run_data_quality_check(df, glueContext, df_name):
+def run_data_quality_check(df, glueContext, df_name, result_s3_prefix):
     dyf_to_check = DynamicFrame.fromDF(df, glueContext, df_name)
     
-    print(f"--- Running Data Quality Check for {df_name} ---")
+    if df_name == "channel":
+        dqdl_ruleset = """
+        Rules = [
+            IsComplete "channel_id",
+            IsUnique "channel_id",
+            Completeness "published_at" >= 0.90
+        ]
+        """
+        
+    elif df_name == "video":
+        dqdl_ruleset = """
+        Rules = [
+            IsComplete "video_id",
+            IsUnique "video_id",
+            Completeness "total_seconds" >= 0.90,
+            Completeness "published_at" >= 0.90
+        ]
+        """
+        
+    elif df_name == "comment":
+        dqdl_ruleset = """
+        Rules = [
+            IsComplete "comment_id",
+            IsUnique "comment_id",
+            Completeness "published_at" >= 0.90
+        ]
+        """
 
-    data_quality_output = dyf_to_check.evaluateDataQuality()
-
-    dq_results = data_quality_output.data_quality_evaluation_results
-    if not dq_results.success:
-        print(f"!!! Data Quality Check FAILED for {df_name}. Errors found: {dq_results.num_errors} !!!")
-    else:
-        print(f"Data Quality Check PASSED for {df_name}.")
-    return True
-
-# ルールの読み込み
-dqdl_ruleset_string = """
-Rules = [
-    # 1. channel_id は必ず存在すること (null, 欠損値ではない)
-    IsComplete "channel_id",
+    dq_results = EvaluateDataQuality.apply(
+        frame=dyf_to_check,
+        ruleset=dqdl_ruleset,
+        publishing_options={
+            "dataQualityEvaluationContext": df_name,
+            "enableDataQualityResultsPublishing": True,
+            "resultsS3Prefix": result_s3_prefix
+        }
+    )
+    dq_df = dq_results.toDF()
     
-    # 2. channel_id には重複がないこと (ユニーク制約)
-    IsUnique "channel_id",
-    
-    # 3. published_at が90%以上埋まっていること (あなたの要望)
-    Completeness "published_at" >= 0.90,
-    
-    # 4. created_at の値が有効な日付形式であること (型検証)
-    IsOfType "created_at", "date"
-]
-"""
+    return dq_df
 
 # ////////////
 # スキーマ設計
@@ -91,9 +128,9 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
-df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}sukima_channel.json")
-df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}sukima_video.json")
-df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}sukima_comment.json")
+df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
+df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
+df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
 
 # ////////////
 # データ型変換
@@ -145,7 +182,6 @@ df_comment = df_comment.filter(
 )
 
 # 重複値の処理
-# video_id ごとにグループ化し、published_at_ts の降順（DESC）でソート
 window_channel = Window.partitionBy('channel_id').orderBy(F.col('published_at').desc())
 df_channel_ranked = df_channel.withColumn('rank', F.row_number().over(window_channel))
 df_channel = df_channel_ranked.filter(F.col('rank') == 1).drop('rank')
@@ -161,10 +197,27 @@ df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 # ////////////
 # DataQualityの実行
 # ////////////
-run_data_quality_check(df_channel, glueContext, "channel")
-run_data_quality_check(df_video, glueContext, "video")
-run_data_quality_check(df_comment, glueContext, "comment")
+run_data_quality_check(
+    df_channel,
+    glueContext,
+    "channel",
+    f"{DQ_REPORT_BASE_PATH}channel/"
+    )
+    
+run_data_quality_check(
+    df_video,
+    glueContext,
+    "video",
+    f"{DQ_REPORT_BASE_PATH}video/"
+    )
 
+run_data_quality_check(
+    df_comment,
+    glueContext,
+    "comment",
+    f"{DQ_REPORT_BASE_PATH}comment/"
+    )
+    
 # ////////////
 # データの格納
 # ////////////
@@ -172,4 +225,17 @@ df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_tr
 df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_video")
 df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_comment")
 
-spark.stop()
+# ////////////
+# データカタログの更新
+# ////////////
+try:
+    glue_client = boto3.client('glue')
+    print(f"Attempting to start crawler: {CRAWLER_NAME}")
+
+    glue_client.start_crawler(Name=CRAWLER_NAME)
+    print("Crawler started successfully to update Data Catalog.")
+
+except Exception as e:
+    print(f"Warning: Error starting crawler {CRAWLER_NAME}: {e}")
+    
+job.commit()

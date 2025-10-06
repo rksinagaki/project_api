@@ -1,55 +1,70 @@
 {
-  "Comment": "APIスクレイピングとGlue ETLパイプラインのオーケストレーション",
+  "Comment": "Data ETL Pipeline using Lambda and Glue triggered by Step Functions",
   "StartAt": "InvokeApiScrapingLambda",
+  "TimeoutSeconds": 1200,
   "States": {
-    
-    // --- ステップ 1: Lambda関数の実行 ---
+
     "InvokeApiScrapingLambda": {
       "Type": "Task",
-      // Lambda関数を同期的に実行し、Step Functionsの実行をブロックします
       "Resource": "arn:aws:states:::lambda:invoke",
       "Parameters": {
-        // [FunctionName]はCDKで動的に設定されますが、ここでは仮のARNを記述
-        "FunctionName": "arn:aws:lambda:ap-northeast-1:123456789012:function:your-api-scraper", 
+        "FunctionName": "arn:aws:lambda:ap-northeast-1:879363564916:function:update-sukima-to-s3", 
         "Payload": {
-          "ExecutionId": "$$.Execution.Id" // 後続処理のためにStep FunctionsのIDをLambdaに渡す
+          "ExecutionId.$": "$$.Execution.Id" 
         }
       },
-      // 実行が成功したらGlueジョブへ進む
       "Retry": [
         {
-          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSAPICallFailed"],
           "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2.0
+          "MaxAttempts": 3,
+          "BackoffRate": 2
         }
       ],
-      "Next": "RunGlueJobAndWait"
+      "Next": "RunGlueJobAndWait",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
+        }
+      ]
     },
     
-    // --- ステップ 2: Glue Jobの実行と待機 ---
     "RunGlueJobAndWait": {
       "Type": "Task",
-      // Glue Jobを開始し、そのジョブが完了するまで待機します (.syncで完了を待つ)
       "Resource": "arn:aws:states:::glue:startJobRun.sync", 
       "Parameters": {
-        "JobName": "glue-sukima-transform", // あなたのGlue Job名を指定
+        "JobName": "glue-sukima-transform",
         "Arguments": {
-          // Glue Jobに渡す引数を定義。ここではLambdaの出力を利用する想定
-          // "--S3_INPUT_PATH.$": "$.Payload.S3InputPath", // Lambdaの出力S3パスを受け取る
-          "--JOB_RUN_ID": "$$.Execution.Id" // Glueログとの紐付けのためIDを渡す
+          "--s3_input_path_channel.$": "$.Payload.input_keys[0]",
+          "--s3_input_path_video.$": "$.Payload.input_keys[1]",
+          "--s3_input_path_comment.$": "$.Payload.input_keys[2]"
         }
       },
-      // ジョブ実行の失敗時にリトライする
-      "Retry": [
+      "End": true,
+      "Catch": [
         {
-          "ErrorEquals": ["States.TaskFailed"],
-          "IntervalSeconds": 30,
-          "MaxAttempts": 3,
-          "BackoffRate": 2.0
+          "ErrorEquals": ["States.ALL"],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
         }
-      ],
-      // ジョブが成功したら終了
+      ]
+    },
+
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:ap-northeast-1:879363564916:message-sukima-workflow",
+        "Message.$": "States.Format('ETL Pipeline failed. Error: {}', $.ErrorDetails)",
+        "MessageAttributes": {
+          "Status": {
+            "DataType": "String",
+            "StringValue": "FAILED"
+          }
+        }
+      },
       "End": true
     }
   }
