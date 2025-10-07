@@ -1,0 +1,76 @@
+{
+  "Comment": "Data ETL Pipeline using Lambda and Glue triggered by Step Functions",
+  "StartAt": "InvokeApiScrapingLambda",
+  "TimeoutSeconds": 1200,
+  "States": {
+    "InvokeApiScrapingLambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${LambdaFunctionArn}",
+        "Payload": {
+          "ExecutionId.$": "States.ArrayGetItem(States.StringSplit($$.Execution.Id, ':'), States.MathAdd(States.ArrayLength(States.StringSplit($$.Execution.Id, ':')), -1))"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSAPICallFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "RunGlueJobAndWait",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
+        }
+      ]
+    },
+    "RunGlueJobAndWait": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${GlueJobName}",
+        "Arguments": {
+          "--s3_input_path_channel.$": "$.Payload.input_keys[0]",
+          "--s3_input_path_video.$": "$.Payload.input_keys[1]",
+          "--s3_input_path_comment.$": "$.Payload.input_keys[2]",
+          "--execution_id.$": "$.Payload.execution_id"
+        }
+      },
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
+        }
+      ]
+    },
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${SNSTopicArn}",
+        "Message.$": "States.Format('ETL Pipeline failed. Error: {}', $.ErrorDetails)",
+        "MessageAttributes": {
+          "Status": {
+            "DataType": "String",
+            "StringValue": "FAILED"
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}
