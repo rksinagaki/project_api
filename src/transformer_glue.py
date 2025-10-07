@@ -15,13 +15,13 @@ import boto3
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, [
     'JOB_NAME',
-    's3_base_path_raw',
     's3_base_path_transformed',
     'dq_report_base_path',
     'crawler_name',
     's3_input_path_channel',
     's3_input_path_video',
-    's3_input_path_comment'
+    's3_input_path_comment',
+    'execution_id'
 ])
 
 sc = SparkContext()
@@ -35,13 +35,13 @@ spark.sparkContext.setLogLevel("ERROR")
 # ////////////
 # 環境変数呼び出し
 # ////////////
-S3_BASE_PATH_RAW = args['s3_base_path_raw']
 S3_BASE_PATH_TRANSFORMED = args['s3_base_path_transformed']
 DQ_REPORT_BASE_PATH = args['dq_report_base_path']
 CRAWLER_NAME = args['crawler_name']
 S3_INPUT_PATH_CHANNEL = args['s3_input_path_channel']
 S3_INPUT_PATH_VIDEO = args['s3_input_path_video']
 S3_INPUT_PATH_COMMENT = args['s3_input_path_comment']
+EXECUTION_ID = args['execution_id']
 
 # ////////////
 # DQの関数
@@ -128,7 +128,6 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
-# S3_BASE_PATH = s3://sukima-youtube-bucket/data/raw_data/
 df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
 df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
 df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
@@ -222,9 +221,9 @@ run_data_quality_check(
 # ////////////
 # データの格納
 # ////////////
-df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_channel")
-df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_video")
-df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_comment")
+df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_channel")
+df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_video")
+df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_comment")
 
 # ////////////
 # データカタログの更新
