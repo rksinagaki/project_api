@@ -1,4 +1,7 @@
 import sys
+import json
+import boto3
+from datetime import datetime
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
@@ -10,7 +13,6 @@ from pyspark.sql.types import StructType, StructField, StringType, LongType, Tim
 from pyspark.sql.window import Window
 from awsglue.dynamicframe import DynamicFrame
 from awsgluedq.transforms import EvaluateDataQuality
-import boto3
 
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, [
@@ -21,7 +23,7 @@ args = getResolvedOptions(sys.argv, [
     's3_input_path_channel',
     's3_input_path_video',
     's3_input_path_comment',
-    'execution_id'
+    'correlation_id'
 ])
 
 sc = SparkContext()
@@ -29,7 +31,6 @@ glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
-
 spark.sparkContext.setLogLevel("ERROR") 
 
 # ////////////
@@ -41,7 +42,23 @@ CRAWLER_NAME = args['crawler_name']
 S3_INPUT_PATH_CHANNEL = args['s3_input_path_channel']
 S3_INPUT_PATH_VIDEO = args['s3_input_path_video']
 S3_INPUT_PATH_COMMENT = args['s3_input_path_comment']
-EXECUTION_ID = args['execution_id']
+CORRELATION_ID = args['correlation_id']
+JOB_NAME = args['JOB_NAME']
+
+# ////////////
+# logging関数
+# ////////////
+def log_json(message, level="INFO", extra={}):
+    log_data = {
+        "timestamp": datetime.now().isoformat(),
+        "log_level": level,
+        "service": JOB_NAME,
+        "correlation_id": CORRELATION_ID,
+        "message": message,
+    }
+    log_data.update(extra) 
+    
+    print(json.dumps(log_data))
 
 # ////////////
 # DQの関数
@@ -128,13 +145,19 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
+log_json("GlueJobを開始しました。S3からデータの読み込みを開始しました。")
+
 df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
 df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
 df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
 
+log_json("S3からデータの読み込みが完了しました。")
+
 # ////////////
 # データ型変換
 # ////////////
+log_json("データ型の変換を開始しました。")
+
 # channelデータ型変更
 df_channel = df_channel.withColumn(
     'published_at',
@@ -165,9 +188,13 @@ df_comment = df_comment.withColumn(
     F.col('published_at').cast('timestamp')
 )
 
+log_json("データ型の変換が完了しました。")
+
 # ////////////
 # 欠損、重複値処理(必ず欠損→重複の順番で処理を行う)
 # ////////////
+log_json("欠損値、重複値の処理を開始しました。")
+
 # 欠損値の処理
 df_channel = df_channel.filter(F.col('channel_id').isNotNull())
 
@@ -194,9 +221,13 @@ window_comment = Window.partitionBy('comment_id').orderBy(F.col('published_at').
 df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_comment))
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
+log_json("欠損値、重複値の処理が完了しました。")
+
 # ////////////
 # DataQualityの実行
 # ////////////
+log_json("データクオリティーの実施を開始しました。S3へレポートの出力を行います。")
+
 run_data_quality_check(
     df_channel,
     glueContext,
@@ -217,17 +248,25 @@ run_data_quality_check(
     "comment",
     f"{DQ_REPORT_BASE_PATH}comment/"
     )
+
+log_json("データクオリティーの実施が完了しました。S3へレポートを出力しました。")
     
 # ////////////
 # データの格納
 # ////////////
-df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_channel")
-df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_video")
-df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{EXECUTION_ID}/sukima_transformed_comment")
+log_json("S3へデータの格納を開始しました。")
+
+df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_channel")
+df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_video")
+df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_comment")
+
+log_json("S3へデータの格納が完了しました。")
 
 # ////////////
 # データカタログの更新
 # ////////////
+log_json("データカタログの更新を開しました。")
+
 try:
     glue_client = boto3.client('glue')
     print(f"Attempting to start crawler: {CRAWLER_NAME}")
@@ -237,5 +276,7 @@ try:
 
 except Exception as e:
     print(f"Warning: Error starting crawler {CRAWLER_NAME}: {e}")
+
+log_json("データカタログの更新を完了しました。GlueJobを完了しました。")
     
 job.commit()

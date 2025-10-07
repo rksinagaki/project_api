@@ -44,7 +44,7 @@
           "--s3_input_path_channel.$": "$.Payload.input_keys[0]",
           "--s3_input_path_video.$": "$.Payload.input_keys[1]",
           "--s3_input_path_comment.$": "$.Payload.input_keys[2]",
-          "--execution_id.$": "$.Payload.execution_id"
+          "--correlation_id.$": "$.Payload.correlation_id"
         }
       },
       "End": true,
