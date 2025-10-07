@@ -9,7 +9,8 @@
       "Parameters": {
         "FunctionName": "${LambdaFunctionArn}",
         "Payload": {
-          "ExecutionId.$": "States.ArrayGetItem(States.StringSplit($$.Execution.Id, ':'), States.MathAdd(States.ArrayLength(States.StringSplit($$.Execution.Id, ':')), -1))"
+          "correlation_id.$": "$$.Execution.Id",
+          "originalInput.$": "$"
         }
       },
       "Retry": [
