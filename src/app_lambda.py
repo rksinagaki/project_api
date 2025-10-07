@@ -160,9 +160,9 @@ def get_comments_for_video(video_id, max_comments_per_video=100):
 def lambda_handler(event, context):
     
     correlation_id_value = event.get('correlation_id')
-
     if correlation_id_value:
-        logger.set_correlation_id(correlation_id_value)
+        short_id = correlation_id_value.split(':')[-1]
+        logger.set_correlation_id(short_id)
 
     current_execution_id = logger.get_correlation_id() 
     if not current_execution_id:
@@ -183,7 +183,7 @@ def lambda_handler(event, context):
         Key=channel_key,
         Body=output_channel.getvalue()
     )
-    logger.info("S3へチャンネルデータを保存しました。", 
+    logger.info("lambdaがS3へチャンネルデータを保存しました。", 
                 extra={"bucket": BUCKET_NAME, "s3_key": channel_key})
 
     # ビデオデータの格納
@@ -196,7 +196,7 @@ def lambda_handler(event, context):
         Key=video_key,
         Body=output_video.getvalue()
     )
-    logger.info("S3へビデオデータを保存しました。", 
+    logger.info("lambdaがS3へビデオデータを保存しました。", 
                 extra={"bucket": BUCKET_NAME, "s3_key": video_key})
 
     # コメントデータの格納
@@ -218,8 +218,10 @@ def lambda_handler(event, context):
         Key=comment_key,
         Body=output_comment.getvalue()
     )
-    logger.info("S3へコメントデータを保存しました。", 
+    logger.info("lambdaがS3へコメントデータを保存しました。", 
                 extra={"bucket": BUCKET_NAME, "s3_key": comment_key})
+    
+    logger.info("lambdaハンドラーが完了しました。")
 
     return {
             "statusCode": 200,
