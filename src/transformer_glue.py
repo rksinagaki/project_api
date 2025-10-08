@@ -33,6 +33,8 @@ job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 spark.sparkContext.setLogLevel("ERROR") 
 
+spark_logger = glueContext.get_logger()
+
 # ////////////
 # 環境変数呼び出し
 # ////////////
@@ -151,11 +153,14 @@ df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
 df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
 df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
 
+# log_jsonが取れなかったので、シャットダウン用として記載しています。
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("S3からデータの読み込みが完了しました。")
 
 # ////////////
 # データ型変換
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データ型の変換を開始しました。")
 
 # channelデータ型変更
@@ -188,11 +193,13 @@ df_comment = df_comment.withColumn(
     F.col('published_at').cast('timestamp')
 )
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データ型の変換が完了しました。")
 
 # ////////////
 # 欠損、重複値処理(必ず欠損→重複の順番で処理を行う)
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("欠損値、重複値の処理を開始しました。")
 
 # 欠損値の処理
@@ -221,11 +228,13 @@ window_comment = Window.partitionBy('comment_id').orderBy(F.col('published_at').
 df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_comment))
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("欠損値、重複値の処理が完了しました。")
 
 # ////////////
 # DataQualityの実行
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データクオリティーの実施を開始しました。S3へレポートの出力を行います。")
 
 run_data_quality_check(
@@ -249,22 +258,26 @@ run_data_quality_check(
     f"{DQ_REPORT_BASE_PATH}comment/"
     )
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データクオリティーの実施が完了しました。S3へレポートを出力しました。")
     
 # ////////////
 # データの格納
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("S3へデータの格納を開始しました。")
 
 df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_channel")
 df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_video")
 df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_comment")
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("S3へデータの格納が完了しました。")
 
 # ////////////
 # データカタログの更新
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データカタログの更新を開しました。")
 
 try:
@@ -277,6 +290,7 @@ try:
 except Exception as e:
     print(f"Warning: Error starting crawler {CRAWLER_NAME}: {e}")
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("データカタログの更新を完了しました。GlueJobを完了しました。")
     
 job.commit()
