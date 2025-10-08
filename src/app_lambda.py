@@ -26,7 +26,6 @@ youtube = build('youtube',
                 )
 logger = Logger()
 
-
 # /////////////////
 # チャンネル情報の取得
 # /////////////////
