@@ -13,7 +13,6 @@ from pyspark.sql.types import StructType, StructField, StringType, LongType, Tim
 from pyspark.sql.window import Window
 from awsglue.dynamicframe import DynamicFrame
 from awsgluedq.transforms import EvaluateDataQuality
-import boto3
 
 ## @params: [JOB_NAME]
 args = getResolvedOptions(sys.argv, [
@@ -32,9 +31,7 @@ glueContext = GlueContext(sc)
 spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
-
 spark.sparkContext.setLogLevel("ERROR") 
-
 spark_logger = glueContext.get_logger()
 
 # ////////////
@@ -63,7 +60,6 @@ def log_json(message, level="INFO", extra={}):
     log_data.update(extra) 
     
     print(json.dumps(log_data))
->>>>>>> feature/monitoring
 
 # ////////////
 # DQの関数
