@@ -10,7 +10,8 @@
         "FunctionName": "${LambdaFunctionArn}",
         "Payload": {
           "correlation_id.$": "$$.Execution.Id",
-          "originalInput.$": "$"
+          // これは必要なのか
+          "originalInput.$": "$" 
         }
       },
       "Retry": [
