@@ -10,7 +10,7 @@ from aws_lambda_powertools import Logger
 
 # lambdaのeventとは何なのか
 # executation_idとは何なのか
-# 162行目あたりの謎の処理。loggerの環境変数は呼び出さなくてもいいのか。PayloadのoriginalInput.$は結局何をしてんの。
+# 162行目あたりの謎の処理。loggerの環境変数は呼び出さなくてもいいのか。PayloadのoriginalInput.$は結局何をしてんの。名前空間とは
 
 # /////////////////
 # 環境変数読み込み

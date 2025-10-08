@@ -48,7 +48,7 @@ CORRELATION_ID = args['correlation_id']
 JOB_NAME = args['JOB_NAME']
 
 # ////////////
-# logging関数
+# ロガー関数
 # ////////////
 def log_json(message, level="INFO", extra={}):
     log_data = {
