@@ -152,7 +152,6 @@ df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
 df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
 df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
 
-# log_jsonが取れなかったので、シャットダウン用として記載しています。
 spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
 log_json("S3からデータの読み込みが完了しました。")
 
