@@ -1,0 +1,78 @@
+{
+  "Comment": "Data ETL Pipeline using Lambda and Glue triggered by Step Functions",
+  "StartAt": "InvokeApiScrapingLambda",
+  "TimeoutSeconds": 1200,
+  "States": {
+    "InvokeApiScrapingLambda": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${LambdaFunctionArn}",
+        "Payload": {
+          "correlation_id.$": "$$.Execution.Id",
+          // これは必要なのか
+          "originalInput.$": "$" 
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSAPICallFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "RunGlueJobAndWait",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
+        }
+      ]
+    },
+    "RunGlueJobAndWait": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "${GlueJobName}",
+        "Arguments": {
+          "--s3_input_path_channel.$": "$.Payload.input_keys[0]",
+          "--s3_input_path_video.$": "$.Payload.input_keys[1]",
+          "--s3_input_path_comment.$": "$.Payload.input_keys[2]",
+          "--correlation_id.$": "$.Payload.correlation_id"
+        }
+      },
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.ErrorDetails"
+        }
+      ]
+    },
+    "NotifyFailure": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${SNSTopicArn}",
+        "Message.$": "States.Format('ETL Pipeline failed. Error: {}', $.ErrorDetails)",
+        "MessageAttributes": {
+          "Status": {
+            "DataType": "String",
+            "StringValue": "FAILED"
+          }
+        }
+      },
+      "End": true
+    }
+  }
+}

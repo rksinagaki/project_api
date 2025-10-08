@@ -1,4 +1,7 @@
 import sys
+import json
+import boto3
+from datetime import datetime
 from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
@@ -13,7 +16,16 @@ from awsgluedq.transforms import EvaluateDataQuality
 import boto3
 
 ## @params: [JOB_NAME]
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 's3_base_path_raw', 's3_base_path_transformed', 'dq_report_base_path', 'crawler_name'])
+args = getResolvedOptions(sys.argv, [
+    'JOB_NAME',
+    's3_base_path_transformed',
+    'dq_report_base_path',
+    'crawler_name',
+    's3_input_path_channel',
+    's3_input_path_video',
+    's3_input_path_comment',
+    'correlation_id'
+])
 
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -23,13 +35,35 @@ job.init(args['JOB_NAME'], args)
 
 spark.sparkContext.setLogLevel("ERROR") 
 
+spark_logger = glueContext.get_logger()
+
 # ////////////
 # 環境変数呼び出し
 # ////////////
-S3_BASE_PATH_RAW = args['s3_base_path_raw']
 S3_BASE_PATH_TRANSFORMED = args['s3_base_path_transformed']
 DQ_REPORT_BASE_PATH = args['dq_report_base_path']
 CRAWLER_NAME = args['crawler_name']
+S3_INPUT_PATH_CHANNEL = args['s3_input_path_channel']
+S3_INPUT_PATH_VIDEO = args['s3_input_path_video']
+S3_INPUT_PATH_COMMENT = args['s3_input_path_comment']
+CORRELATION_ID = args['correlation_id']
+JOB_NAME = args['JOB_NAME']
+
+# ////////////
+# ロガー関数
+# ////////////
+def log_json(message, level="INFO", extra={}):
+    log_data = {
+        "timestamp": datetime.now().isoformat(),
+        "log_level": level,
+        "service": JOB_NAME,
+        "correlation_id": CORRELATION_ID,
+        "message": message,
+    }
+    log_data.update(extra) 
+    
+    print(json.dumps(log_data))
+>>>>>>> feature/monitoring
 
 # ////////////
 # DQの関数
@@ -116,14 +150,22 @@ comment_schema = StructType([
 # ////////////
 # データの読み込み
 # ////////////
-# S3_BASE_PATH = s3://sukima-youtube-bucket/data/raw_data/
-df_channel = spark.read.schema(channel_schema).json(f"{S3_BASE_PATH_RAW}sukima_channel.json")
-df_video = spark.read.schema(video_schema).json(f"{S3_BASE_PATH_RAW}sukima_video.json")
-df_comment = spark.read.schema(comment_schema).json(f"{S3_BASE_PATH_RAW}sukima_comment.json")
+log_json("GlueJobを開始しました。S3からデータの読み込みを開始しました。")
+
+df_channel = spark.read.schema(channel_schema).json(S3_INPUT_PATH_CHANNEL)
+df_video = spark.read.schema(video_schema).json(S3_INPUT_PATH_VIDEO)
+df_comment = spark.read.schema(comment_schema).json(S3_INPUT_PATH_COMMENT)
+
+# log_jsonが取れなかったので、シャットダウン用として記載しています。
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("S3からデータの読み込みが完了しました。")
 
 # ////////////
 # データ型変換
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データ型の変換を開始しました。")
+
 # channelデータ型変更
 df_channel = df_channel.withColumn(
     'published_at',
@@ -154,9 +196,15 @@ df_comment = df_comment.withColumn(
     F.col('published_at').cast('timestamp')
 )
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データ型の変換が完了しました。")
+
 # ////////////
 # 欠損、重複値処理(必ず欠損→重複の順番で処理を行う)
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("欠損値、重複値の処理を開始しました。")
+
 # 欠損値の処理
 df_channel = df_channel.filter(F.col('channel_id').isNotNull())
 
@@ -183,9 +231,15 @@ window_comment = Window.partitionBy('comment_id').orderBy(F.col('published_at').
 df_comment_ranked = df_comment.withColumn('rank', F.row_number().over(window_comment))
 df_comment = df_comment_ranked.filter(F.col('rank')==1).drop('rank')
 
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("欠損値、重複値の処理が完了しました。")
+
 # ////////////
 # DataQualityの実行
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データクオリティーの実施を開始しました。S3へレポートの出力を行います。")
+
 run_data_quality_check(
     df_channel,
     glueContext,
@@ -206,17 +260,29 @@ run_data_quality_check(
     "comment",
     f"{DQ_REPORT_BASE_PATH}comment/"
     )
+
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データクオリティーの実施が完了しました。S3へレポートを出力しました。")
     
 # ////////////
 # データの格納
 # ////////////
-df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_channel")
-df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_video")
-df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}sukima_transformed_comment")
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("S3へデータの格納を開始しました。")
+
+df_channel.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_channel")
+df_video.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_video")
+df_comment.write.mode("overwrite").parquet(f"{S3_BASE_PATH_TRANSFORMED}{CORRELATION_ID}/sukima_transformed_comment")
+
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("S3へデータの格納が完了しました。")
 
 # ////////////
 # データカタログの更新
 # ////////////
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データカタログの更新を開しました。")
+
 try:
     glue_client = boto3.client('glue')
     print(f"Attempting to start crawler: {CRAWLER_NAME}")
@@ -226,5 +292,8 @@ try:
 
 except Exception as e:
     print(f"Warning: Error starting crawler {CRAWLER_NAME}: {e}")
+
+spark_logger.info("--- Spark Action completed. Flushing log buffer. ---")
+log_json("データカタログの更新を完了しました。GlueJobを完了しました。")
     
 job.commit()
