@@ -6,9 +6,7 @@ services:
     container_name: project_api-dev
     working_dir: /work
     volumes:
-      - ./src:/work/src
-      - ./notebook:/work/notebook
-      - ./data:/work/data
+      - .:/work
     ports:
       - "127.0.0.1:8888:8888"
     command: >
@@ -17,4 +15,4 @@ services:
       --ServerApp.password=''
       --ServerApp.allow_origin='*'
       --ServerApp.disable_check_xsrf=True
-      --allow-root            
+      --allow-root
