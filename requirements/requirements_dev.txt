@@ -7,3 +7,6 @@ seaborn
 torch
 transformers
 pyarrow
+janome
+wordcloud
+japanize-matplotlib
