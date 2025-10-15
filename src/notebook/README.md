@@ -42,13 +42,13 @@
 アーティスト公式チャンネルの成長施策・改善提案につなげること。
 
 - 特に担当した箇所について、YouTubeコメントデータを用いて以下を実施。
-	1.	EDA（探索的データ分析）  
-    コメントの分布・長さ・感情傾向などを可視化
-	2.	テキスト前処理  
+1. EDA（探索的データ分析）  
+    コメントの分布・長さなどを可視化
+2. テキスト前処理  
     正規化・不要語除去・日本語クリーニング
-	3.	埋め込み生成（SentenceTransformer）  
+3. 埋め込み生成（SentenceTransformer）  
     paraphrase-multilingual-MiniLM-L12-v2により文章ベクトル化
-	4.	RAG基盤データ出力  
+4. RAG基盤データ出力  
     embeddings.npyおよびcorpus_df.pklを作成（Streamlitで利用）
 
 # 🚀 実行手順
