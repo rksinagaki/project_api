@@ -16,3 +16,19 @@ services:
       --ServerApp.allow_origin='*'
       --ServerApp.disable_check_xsrf=True
       --allow-root
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: project_api-streamlit
+    working_dir: /work/src/app
+    volumes:
+      - .:/work
+    ports:
+      - "127.0.0.1:8501:8501"
+      - "127.0.0.1:8502:8502"
+      - "127.0.0.1:8503:8503"
+
+    # command: >
+    # docker exec -it project_api-streamlit bash -lc \'cd /work/src/app && streamlit run app-suggest.py --server.address=0.0.0.0 --server.port=8503'

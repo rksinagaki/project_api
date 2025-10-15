@@ -16,3 +16,6 @@ sentence-transformers
 google-genai
 python-dotenv
 google-generativeai
+
+# 可視化ダッシュボード
+streamlit
