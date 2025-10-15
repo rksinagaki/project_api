@@ -10,3 +10,9 @@ pyarrow
 janome
 wordcloud
 japanize-matplotlib
+sentence-transformers
+
+# Gemini利用用（新規追加）
+google-genai
+python-dotenv
+google-generativeai
