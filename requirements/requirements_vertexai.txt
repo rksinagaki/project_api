@@ -1,0 +1,12 @@
+google-cloud-aiplatform
+vertexai
+google-cloud-bigquery
+google-auth
+
+pandas
+numpy
+pandas-gbq
+pyarrow
+gcsfs
+
+tqdm
