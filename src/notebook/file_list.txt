@@ -1,0 +1,5 @@
+01_EDA_youtube_v2.ipynb
+02_vertexai_rag.ipynb
+README.md
+figs
+file_list.txt
