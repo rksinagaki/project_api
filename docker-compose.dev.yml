@@ -31,4 +31,4 @@ services:
       - "127.0.0.1:8503:8503"
 
     # command: >
-    # docker exec -it project_api-streamlit bash -lc \'cd /work/src/app && streamlit run app-suggest.py --server.address=0.0.0.0 --server.port=8503'
+    # docker exec -it project_api-streamlit bash -lc 'cd /work/src/app && streamlit run app-suggest.py --server.address=0.0.0.0 --server.port=8503'
