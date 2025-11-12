@@ -9,3 +9,6 @@ data/.DS_Store
 # --- RAG embeddings and cache ---
 *.npy
 *.pkl
+
+# langchain
+data/hino_trash/
