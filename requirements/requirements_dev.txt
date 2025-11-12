@@ -1,21 +1,27 @@
+# 基本
 jupyterlab
 pandas
 numpy
 scikit-learn
 matplotlib
 seaborn
-torch
-transformers
 pyarrow
 janome
 wordcloud
 japanize-matplotlib
 sentence-transformers
+torch
+transformers
 
-# Gemini利用用（新規追加）
-google-genai
-python-dotenv
-google-generativeai
-
-# 可視化ダッシュボード
+# 可視化
 streamlit
+
+# Google/Gemini
+google-generativeai
+python-dotenv
+langchain
+langchain-google-genai>=3.0.2
+langchain-core>=1.0.0
+langchain-community
+langchain-text-splitters
+langchain-chroma

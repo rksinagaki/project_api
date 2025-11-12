@@ -29,6 +29,9 @@ services:
       - "127.0.0.1:8501:8501"
       - "127.0.0.1:8502:8502"
       - "127.0.0.1:8503:8503"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - API_KEY=${API_KEY}
 
     # command: >
     # docker exec -it project_api-streamlit bash -lc 'cd /work/src/app && streamlit run app-suggest.py --server.address=0.0.0.0 --server.port=8503'

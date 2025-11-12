@@ -83,3 +83,35 @@
 - GCP上での展開を見据えたアーキテクチャ設計（Cloud RunやVertex AIとの統合を想定）  
 - 感情分析・トレンド抽出などの自然言語処理機能の追加  
 - StreamlitアプリのUX改善とLooker Studioなど外部ダッシュボードとの連携など
+
+## 追加実装(2025.11.12)
+- LangChain練習（マルチモーダルなRAG実装）
+### ディレクトリ構成
+```
+project_api/
+├── .env                          # GOOGLE_API_KEY=... など
+├── .gitignore
+├── docker-compose.dev.yml
+├── Dockerfile.dev
+├── requirements/
+│   └── requirements_dev.txt
+├── data/                         # ← 生データはここ（リポジトリ直下）
+│   └── hino_trash/
+│       └── hino_trash.csv
+└── src/
+    ├── app/                      # ← アプリ実行面（RAG/Streamlit/インデックス）
+    │   ├── app-trash.py
+    │   ├── make_index.py
+    │   └── data/                 # ← ベクトルDBの保存先（生成物）
+    │       └── hino_trash/
+    │           ├── chroma.sqlite3
+    │           
+    └── notebook/                 # 実験・検証用
+        ├── README.md
+        └── langchain-practice.ipynb
+```
+
+### streamlitで可視化
+- docker exec -it project_api-streamlit bash
+- streamlit run app-trash.py --server.address=0.0.0.0 --server.port=8501
+
